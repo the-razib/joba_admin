@@ -1,30 +1,30 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:joba_admin/main.dart';
+import 'package:joba_admin/core/models/article.dart';
+import 'package:joba_admin/core/repositories/article_repository.dart';
+import 'package:joba_admin/core/repositories/user_repository.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  test('mock user seed provides table-ready data', () async {
+    final users = await MockUserRepository().seedUsers();
+    expect(users, isNotEmpty);
+    for (final u in users) {
+      expect(u.uid, isNotEmpty);
+      expect(u.email, contains('@'));
+    }
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  test('mock articles are bilingual, categorized and versioned', () async {
+    final repo = MockArticleRepository();
+    final articles = await repo.seedArticles();
+    final categories = await repo.seedCategories();
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(articles, isNotEmpty);
+    for (final a in articles) {
+      expect(a.titleBn, isNotEmpty);
+      expect(a.titleEn, isNotEmpty);
+      expect(ArticleStatus.values.contains(a.status), isTrue);
+      expect(a.version, greaterThanOrEqualTo(1));
+      expect(categories.any((c) => c.id == a.categoryId), isTrue);
+    }
   });
 }
