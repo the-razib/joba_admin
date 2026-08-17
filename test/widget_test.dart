@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:joba_admin/core/models/article.dart';
+import 'package:joba_admin/features/articles/models/article.dart';
 import 'package:joba_admin/core/repositories/article_repository.dart';
 import 'package:joba_admin/core/repositories/user_repository.dart';
 

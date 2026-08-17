@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/core/models/report.dart';
+import 'package:joba_admin/features/reports/models/report.dart';
 import 'package:joba_admin/core/repositories/report_repository.dart';
 
 class ReportsController extends GetxController {

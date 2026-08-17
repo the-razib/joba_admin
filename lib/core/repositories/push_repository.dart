@@ -1,4 +1,4 @@
-import 'package:joba_admin/core/models/push_notification.dart';
+import 'package:joba_admin/features/push_notifications/models/push_notification.dart';
 
 /// Result of handing a campaign to the delivery layer.
 ///

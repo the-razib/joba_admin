@@ -1,10 +1,14 @@
 import 'package:get/get.dart';
-import 'package:joba_admin/core/models/admin_profile.dart';
-import 'package:joba_admin/core/models/admin_user.dart';
+import 'package:joba_admin/features/admin_management/models/admin_profile.dart';
+import 'package:joba_admin/features/admin_management/models/admin_user.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:uuid/uuid.dart';
 
 class AdminManagementController extends GetxController {
   final admins = <AdminProfile>[].obs;
+
+  bool get canManageAdmins =>
+      Get.find<AuthService>().user.value?.role == AdminRole.superAdmin;
 
   @override
   void onInit() {

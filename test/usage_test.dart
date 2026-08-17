@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/core/models/usage_metrics.dart';
+import 'package:joba_admin/features/usage/models/usage_metrics.dart';
 import 'package:joba_admin/core/repositories/usage_repository.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/utils/format.dart';

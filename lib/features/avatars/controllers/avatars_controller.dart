@@ -1,6 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/core/models/avatar_item.dart';
+import 'package:joba_admin/features/avatars/models/avatar_item.dart';
 import 'package:joba_admin/core/repositories/avatar_repository.dart';
 import 'package:uuid/uuid.dart';
 

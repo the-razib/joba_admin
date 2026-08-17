@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/core/models/screener_admin_model.dart';
+import 'package:joba_admin/features/disease_checkup/models/screener_admin_model.dart';
 import 'package:joba_admin/core/repositories/screener_repository.dart';
 import 'package:joba_admin/features/disease_checkup/controllers/admin_screener_controller.dart';
 import 'package:joba_admin/features/disease_checkup/views/admin_screener_screen.dart';

@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/core/models/app_user.dart';
-import 'package:joba_admin/core/models/reminder_template.dart';
+import 'package:joba_admin/features/users/models/app_user.dart';
+import 'package:joba_admin/features/reminders/models/reminder_template.dart';
 import 'package:joba_admin/core/repositories/user_repository.dart';
 
 class RemindersController extends GetxController {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/core/models/admin_user.dart';
+import 'package:joba_admin/features/admin_management/models/admin_user.dart';
 import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/services/theme_service.dart';
 import 'package:joba_admin/core/widgets/app_logo.dart';

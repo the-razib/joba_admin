@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:joba_admin/core/models/usage_metrics.dart';
+import 'package:joba_admin/features/usage/models/usage_metrics.dart';
 
 /// Phase 1: mock seed. Phase 3: `FirebaseUsageRepository` calls an
 /// authenticated Cloud Function (`getProjectUsage`) that holds the service

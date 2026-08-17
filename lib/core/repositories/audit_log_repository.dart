@@ -1,4 +1,4 @@
-import 'package:joba_admin/core/models/audit_log.dart';
+import 'package:joba_admin/features/audit_logs/models/audit_log.dart';
 
 /// Phase 1: mock seed. Phase 3: `FirebaseAuditLogRepository` reads
 /// `audit_logs` (written by cloud function).

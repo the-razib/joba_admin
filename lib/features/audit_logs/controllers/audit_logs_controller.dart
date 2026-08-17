@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/core/models/audit_log.dart';
+import 'package:joba_admin/features/audit_logs/models/audit_log.dart';
 import 'package:joba_admin/core/repositories/audit_log_repository.dart';
 
 class AuditLogsController extends GetxController {

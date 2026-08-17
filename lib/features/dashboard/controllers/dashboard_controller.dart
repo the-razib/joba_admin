@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
-import 'package:joba_admin/core/models/app_user.dart';
-import 'package:joba_admin/core/models/article.dart';
-import 'package:joba_admin/core/models/report.dart';
+import 'package:joba_admin/features/users/models/app_user.dart';
+import 'package:joba_admin/features/articles/models/article.dart';
+import 'package:joba_admin/features/reports/models/report.dart';
 import 'package:joba_admin/core/repositories/article_repository.dart';
 import 'package:joba_admin/core/repositories/report_repository.dart';
 import 'package:joba_admin/core/repositories/user_repository.dart';

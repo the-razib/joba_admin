@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
-import 'package:joba_admin/core/models/app_user.dart';
-import 'package:joba_admin/core/models/premium.dart';
+import 'package:joba_admin/features/users/models/app_user.dart';
+import 'package:joba_admin/features/premium/models/premium.dart';
 import 'package:joba_admin/core/repositories/user_repository.dart';
 
 class PremiumController extends GetxController {

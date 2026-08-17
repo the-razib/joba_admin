@@ -1,4 +1,4 @@
-import 'package:joba_admin/core/models/report.dart';
+import 'package:joba_admin/features/reports/models/report.dart';
 
 /// Phase 1: mock seed. Phase 3: `FirebaseReportRepository` reads `reports`,
 /// written by the app's Report Problem screen.

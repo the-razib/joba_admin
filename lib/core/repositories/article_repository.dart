@@ -1,5 +1,5 @@
-import 'package:joba_admin/core/models/article.dart';
-import 'package:joba_admin/core/models/article_category.dart';
+import 'package:joba_admin/features/articles/models/article.dart';
+import 'package:joba_admin/features/articles/models/article_category.dart';
 
 /// Phase 1: mock seed. Phase 3: `FirebaseArticleRepository` reads/writes
 /// `articles` + `article_categories` (same schema as the Joba app).

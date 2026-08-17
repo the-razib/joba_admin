@@ -1,5 +1,5 @@
 import 'package:get/get.dart';
-import 'package:joba_admin/core/models/admin_user.dart';
+import 'package:joba_admin/features/admin_management/models/admin_user.dart';
 
 /// Mock admin auth. Phase 3: Firebase Auth + custom claims for roles.
 class AuthService extends GetxService {

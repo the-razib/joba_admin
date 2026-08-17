@@ -1,5 +1,5 @@
 import 'package:get/get.dart';
-import 'package:joba_admin/core/models/screener_admin_model.dart';
+import 'package:joba_admin/features/disease_checkup/models/screener_admin_model.dart';
 import 'package:joba_admin/core/repositories/screener_repository.dart';
 
 class AdminScreenerController extends GetxController {

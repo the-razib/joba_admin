@@ -1,5 +1,5 @@
 import 'package:get/get.dart';
-import 'package:joba_admin/core/models/usage_metrics.dart';
+import 'package:joba_admin/features/usage/models/usage_metrics.dart';
 import 'package:joba_admin/core/repositories/usage_repository.dart';
 
 class UsageController extends GetxController {

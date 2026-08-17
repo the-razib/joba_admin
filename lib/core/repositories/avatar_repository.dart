@@ -1,4 +1,4 @@
-import 'package:joba_admin/core/models/avatar_item.dart';
+import 'package:joba_admin/features/avatars/models/avatar_item.dart';
 
 /// Phase 1: seeds match the app's bundled asset folders.
 /// Phase 3: `FirebaseAvatarRepository` reads `avatar_categories` + `avatars`

@@ -1,5 +1,5 @@
 import 'package:get/get.dart';
-import 'package:joba_admin/core/models/push_notification.dart';
+import 'package:joba_admin/features/push_notifications/models/push_notification.dart';
 import 'package:joba_admin/core/repositories/push_repository.dart';
 import 'package:uuid/uuid.dart';
 

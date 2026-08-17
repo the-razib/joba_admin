@@ -1,5 +1,5 @@
-import 'package:joba_admin/core/models/app_user.dart';
-import 'package:joba_admin/core/models/reminder_template.dart';
+import 'package:joba_admin/features/users/models/app_user.dart';
+import 'package:joba_admin/features/reminders/models/reminder_template.dart';
 
 /// Phase 1: mock seed. Phase 3: `FirebaseUserRepository` reads `users/{uid}`.
 abstract class UserRepository {

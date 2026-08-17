@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:joba_admin/core/models/app_user.dart';
-import 'package:joba_admin/core/models/article.dart';
-import 'package:joba_admin/core/models/report.dart';
+import 'package:joba_admin/features/users/models/app_user.dart';
+import 'package:joba_admin/features/articles/models/article.dart';
+import 'package:joba_admin/features/reports/models/report.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 
 /// Soft-tinted pill badge used across tables and detail panels.

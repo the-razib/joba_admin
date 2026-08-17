@@ -1,4 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/features/admin_management/models/admin_user.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 
 /// Mirrors the app's `DynamicConfig` (app_config/algorithm) plus general
 /// app-level settings. Phase 3 writes straight to Firestore app_config.
@@ -20,6 +23,64 @@ class SettingsController extends GetxController {
   final articleAudioEnabled = false.obs;
 
   final saving = false.obs;
+
+  bool get canEdit =>
+      Get.find<AuthService>().user.value?.role == AdminRole.superAdmin;
+
+  late final TextEditingController versionController;
+  late final TextEditingController confidenceController;
+  late final List<TextEditingController> weightsControllers;
+  late final TextEditingController outlierController;
+  late final TextEditingController varianceController;
+  late final TextEditingController minVersionController;
+
+  @override
+  void onInit() {
+    super.onInit();
+    versionController = TextEditingController(text: algorithmVersion.value);
+    confidenceController =
+        TextEditingController(text: '${confidenceThreshold.value}');
+    weightsControllers = [
+      for (final w in wmaWeights) TextEditingController(text: '$w'),
+    ];
+    outlierController =
+        TextEditingController(text: '${outlierWeightFactor.value}');
+    varianceController =
+        TextEditingController(text: '${irregularVarianceThreshold.value}');
+    minVersionController = TextEditingController(text: minAppVersion.value);
+  }
+
+  @override
+  void onClose() {
+    versionController.dispose();
+    confidenceController.dispose();
+    for (final w in weightsControllers) {
+      w.dispose();
+    }
+    outlierController.dispose();
+    varianceController.dispose();
+    minVersionController.dispose();
+    super.onClose();
+  }
+
+  double _parse(TextEditingController c, double fallback) =>
+      double.tryParse(c.text) ?? fallback;
+
+  Future<void> saveForm() async {
+    algorithmVersion.value = versionController.text.trim();
+    confidenceThreshold.value =
+        _parse(confidenceController, confidenceThreshold.value);
+    wmaWeights.value = [
+      for (var i = 0; i < 5; i++)
+        _parse(weightsControllers[i], wmaWeights[i]),
+    ];
+    outlierWeightFactor.value =
+        _parse(outlierController, outlierWeightFactor.value);
+    irregularVarianceThreshold.value =
+        _parse(varianceController, irregularVarianceThreshold.value);
+    minAppVersion.value = minVersionController.text.trim();
+    await save();
+  }
 
   Future<void> save() async {
     saving.value = true;

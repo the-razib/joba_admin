@@ -1,4 +1,4 @@
-import 'package:joba_admin/core/models/screener_admin_model.dart';
+import 'package:joba_admin/features/disease_checkup/models/screener_admin_model.dart';
 
 abstract class ScreenerRepository {
   Future<List<ScreenerAdminModel>> getScreeners();

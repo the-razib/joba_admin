@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/core/models/reminder_template.dart';
+import 'package:joba_admin/features/reminders/models/reminder_template.dart';
 import 'package:joba_admin/core/repositories/user_repository.dart';
 import 'package:joba_admin/features/reminders/controllers/reminders_controller.dart';
-import 'package:joba_admin/features/reminders/views/reminders_screen.dart';
+import 'package:joba_admin/features/reminders/views/screens/reminders_screen.dart';
 
 void main() {
   late RemindersController controller;

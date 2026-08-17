@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/core/models/article.dart';
-import 'package:joba_admin/core/models/article_category.dart';
+import 'package:joba_admin/features/articles/models/article.dart';
+import 'package:joba_admin/features/articles/models/article_category.dart';
 import 'package:joba_admin/core/repositories/article_repository.dart';
 import 'package:uuid/uuid.dart';
 
