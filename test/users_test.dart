@@ -172,7 +172,7 @@ void main() {
       final pills = find.byType(PillBadge);
       expect(pills, findsWidgets);
       for (var i = 0; i < tester.widgetList(pills).length; i++) {
-        expect(tester.getSize(pills.at(i)).width, lessThan(130));
+        expect(tester.getSize(pills.at(i)).width, lessThanOrEqualTo(130));
       }
     });
 

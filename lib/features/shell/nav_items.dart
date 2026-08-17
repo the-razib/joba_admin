@@ -4,6 +4,7 @@ enum NavId {
   dashboard,
   users,
   cycleData,
+  diseaseCheckup,
   articles,
   avatars,
   reminders,
@@ -43,6 +44,11 @@ const navItems = [
     id: NavId.cycleData,
     label: 'Cycle Data',
     icon: Icons.monitor_heart_outlined,
+  ),
+  NavItem(
+    id: NavId.diseaseCheckup,
+    label: 'Disease Checkup',
+    icon: Icons.health_and_safety_outlined,
   ),
   NavItem(id: NavId.articles, label: 'Articles', icon: Icons.article_outlined),
   NavItem(

@@ -8,6 +8,7 @@ import 'package:joba_admin/features/audit_logs/views/audit_logs_screen.dart';
 import 'package:joba_admin/features/avatars/views/avatars_screen.dart';
 import 'package:joba_admin/features/cycle_data/views/cycle_data_screen.dart';
 import 'package:joba_admin/features/dashboard/views/dashboard_screen.dart';
+import 'package:joba_admin/features/disease_checkup/views/admin_screener_screen.dart';
 import 'package:joba_admin/features/premium/views/premium_screen.dart';
 import 'package:joba_admin/features/push_notifications/views/push_screen.dart';
 import 'package:joba_admin/features/reminders/views/reminders_screen.dart';
@@ -75,6 +76,8 @@ class AdminShell extends GetView<ShellController> {
         return const AvatarsScreen();
       case NavId.cycleData:
         return const CycleDataScreen();
+      case NavId.diseaseCheckup:
+        return const AdminScreenerScreen();
       case NavId.reminders:
         return const RemindersScreen();
       case NavId.push:
