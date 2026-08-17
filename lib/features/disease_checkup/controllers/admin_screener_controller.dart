@@ -7,7 +7,7 @@ class AdminScreenerController extends GetxController {
 
   final RxBool loading = false.obs;
   final RxList<ScreenerAdminModel> screeners = <ScreenerAdminModel>[].obs;
-  final Rxn<ScreenerAdminModel> selectedScreener = Rxn<ScreenerAdminModel>();
+  final RxString selectedScreenerId = ''.obs;
 
   final RxString searchQuery = ''.obs;
   final RxString statusFilter = 'all'.obs; // 'all', 'active', 'inactive'
@@ -27,22 +27,25 @@ class AdminScreenerController extends GetxController {
       final list = await _repository.getScreeners();
       screeners.assignAll(list);
       if (screeners.isNotEmpty) {
-        if (selectedScreener.value == null) {
-          selectedScreener.value = screeners.first;
-        } else {
-          final updated = screeners.firstWhereOrNull(
-            (s) => s.id == selectedScreener.value!.id,
-          );
-          selectedScreener.value = updated ?? screeners.first;
+        if (selectedScreenerId.value.isEmpty ||
+            !screeners.any((s) => s.id == selectedScreenerId.value)) {
+          selectedScreenerId.value = screeners.first.id;
         }
       } else {
-        selectedScreener.value = null;
+        selectedScreenerId.value = '';
       }
     } catch (e) {
       Get.snackbar('Error', 'Failed to load screeners: $e');
     } finally {
       loading.value = false;
     }
+  }
+
+  ScreenerAdminModel? get selectedScreener {
+    if (screeners.isEmpty) return null;
+    return screeners
+            .firstWhereOrNull((s) => s.id == selectedScreenerId.value) ??
+        screeners.first;
   }
 
   List<ScreenerAdminModel> get filteredScreeners {
@@ -81,7 +84,7 @@ class AdminScreenerController extends GetxController {
 
   // --- Screener Actions ---
   void selectScreener(ScreenerAdminModel screener) {
-    selectedScreener.value = screener;
+    selectedScreenerId.value = screener.id;
   }
 
   Future<void> saveScreener(
@@ -92,7 +95,7 @@ class AdminScreenerController extends GetxController {
       if (isNew) {
         final created = await _repository.createScreener(screener);
         screeners.add(created);
-        selectedScreener.value = created;
+        selectedScreenerId.value = created.id;
         Get.snackbar('Success', 'Created screener "${screener.nameEn}"');
       } else {
         final updated = await _repository.updateScreener(screener);
@@ -100,7 +103,7 @@ class AdminScreenerController extends GetxController {
         if (idx != -1) {
           screeners[idx] = updated;
         }
-        selectedScreener.value = updated;
+        selectedScreenerId.value = updated.id;
         Get.snackbar('Success', 'Updated screener "${screener.nameEn}"');
       }
     } catch (e) {
@@ -113,8 +116,11 @@ class AdminScreenerController extends GetxController {
       final success = await _repository.deleteScreener(id);
       if (success) {
         screeners.removeWhere((s) => s.id == id);
-        selectedScreener.value = screeners.isNotEmpty ? screeners.first : null;
-        Get.snackbar('Deleted', 'Screener has been deleted.');
+        if (selectedScreenerId.value == id) {
+          selectedScreenerId.value =
+              screeners.isNotEmpty ? screeners.first.id : '';
+        }
+        Get.snackbar('Success', 'Screener deleted successfully.');
       }
     } catch (e) {
       Get.snackbar('Error', 'Failed to delete screener: $e');
@@ -128,117 +134,112 @@ class AdminScreenerController extends GetxController {
         final idx = screeners.indexWhere((s) => s.id == id);
         if (idx != -1) {
           screeners[idx] = screeners[idx].copyWith(enabled: enabled);
-          if (selectedScreener.value?.id == id) {
-            selectedScreener.value = screeners[idx];
-          }
         }
       }
     } catch (e) {
-      Get.snackbar('Error', 'Failed to toggle screener status: $e');
+      Get.snackbar('Error', 'Failed to update active status: $e');
     }
   }
 
   // --- Question Actions ---
-  Future<void> addQuestion(
-    String screenerId,
-    ScreenerQuestionAdmin question,
-  ) async {
-    final current = screeners.firstWhereOrNull((s) => s.id == screenerId);
-    if (current == null) return;
+  void addQuestion(String screenerId, ScreenerQuestionAdmin question) {
+    final idx = screeners.indexWhere((s) => s.id == screenerId);
+    if (idx == -1) return;
 
+    final current = screeners[idx];
     final updatedQuestions = List<ScreenerQuestionAdmin>.from(current.questions)
       ..add(question.copyWith(order: current.questions.length + 1));
 
-    final updated = current.copyWith(questions: updatedQuestions);
-    await saveScreener(updated, isNew: false);
+    final updatedScreener = current.copyWith(questions: updatedQuestions);
+    saveScreener(updatedScreener, isNew: false);
   }
 
-  Future<void> updateQuestion(
-    String screenerId,
-    ScreenerQuestionAdmin question,
-  ) async {
-    final current = screeners.firstWhereOrNull((s) => s.id == screenerId);
-    if (current == null) return;
+  void updateQuestion(String screenerId, ScreenerQuestionAdmin question) {
+    final idx = screeners.indexWhere((s) => s.id == screenerId);
+    if (idx == -1) return;
 
-    final updatedQuestions = current.questions.map((q) {
-      return q.id == question.id ? question : q;
-    }).toList();
-
-    final updated = current.copyWith(questions: updatedQuestions);
-    await saveScreener(updated, isNew: false);
+    final current = screeners[idx];
+    final qIdx = current.questions.indexWhere((q) => q.id == question.id);
+    if (qIdx != -1) {
+      final updatedQuestions =
+          List<ScreenerQuestionAdmin>.from(current.questions);
+      updatedQuestions[qIdx] = question;
+      final updatedScreener = current.copyWith(questions: updatedQuestions);
+      saveScreener(updatedScreener, isNew: false);
+    }
   }
 
   Future<void> deleteQuestion(String screenerId, String questionId) async {
-    final current = screeners.firstWhereOrNull((s) => s.id == screenerId);
-    if (current == null) return;
+    final idx = screeners.indexWhere((s) => s.id == screenerId);
+    if (idx == -1) return;
 
-    final updatedQuestions = current.questions
-        .where((q) => q.id != questionId)
-        .toList();
+    final current = screeners[idx];
+    final updatedQuestions = List<ScreenerQuestionAdmin>.from(current.questions)
+      ..removeWhere((q) => q.id == questionId);
 
     // Re-index orders
-    for (int i = 0; i < updatedQuestions.length; i++) {
+    for (var i = 0; i < updatedQuestions.length; i++) {
       updatedQuestions[i] = updatedQuestions[i].copyWith(order: i + 1);
     }
 
-    final updated = current.copyWith(questions: updatedQuestions);
-    await saveScreener(updated, isNew: false);
+    final updatedScreener = current.copyWith(questions: updatedQuestions);
+    await saveScreener(updatedScreener, isNew: false);
   }
 
-  Future<void> toggleQuestionActive(
-    String screenerId,
-    String questionId,
-    bool isActive,
-  ) async {
-    final current = screeners.firstWhereOrNull((s) => s.id == screenerId);
-    if (current == null) return;
+  void reorderQuestions(String screenerId, int oldIndex, int newIndex) {
+    final idx = screeners.indexWhere((s) => s.id == screenerId);
+    if (idx == -1) return;
 
-    final updatedQuestions = current.questions.map((q) {
-      return q.id == questionId ? q.copyWith(isActive: isActive) : q;
-    }).toList();
-
-    final updated = current.copyWith(questions: updatedQuestions);
-    await saveScreener(updated, isNew: false);
-  }
-
-  Future<void> reorderQuestions(
-    String screenerId,
-    int oldIndex,
-    int newIndex,
-  ) async {
-    final current = screeners.firstWhereOrNull((s) => s.id == screenerId);
-    if (current == null) return;
-
-    final list = List<ScreenerQuestionAdmin>.from(current.questions);
+    final current = screeners[idx];
+    final updated = List<ScreenerQuestionAdmin>.from(current.questions);
     if (oldIndex < newIndex) {
       newIndex -= 1;
     }
-    final item = list.removeAt(oldIndex);
-    list.insert(newIndex, item);
+    final item = updated.removeAt(oldIndex);
+    updated.insert(newIndex, item);
 
-    // Re-assign orders
-    final reindexed = <ScreenerQuestionAdmin>[];
-    for (int i = 0; i < list.length; i++) {
-      reindexed.add(list[i].copyWith(order: i + 1));
+    // Re-index
+    for (var i = 0; i < updated.length; i++) {
+      updated[i] = updated[i].copyWith(order: i + 1);
     }
 
-    final updated = current.copyWith(questions: reindexed);
-    await saveScreener(updated, isNew: false);
+    final updatedScreener = current.copyWith(questions: updated);
+    saveScreener(updatedScreener, isNew: false);
+  }
+
+  void toggleQuestionActive(
+    String screenerId,
+    String questionId,
+    bool isActive,
+  ) {
+    final idx = screeners.indexWhere((s) => s.id == screenerId);
+    if (idx == -1) return;
+
+    final current = screeners[idx];
+    final qIdx = current.questions.indexWhere((q) => q.id == questionId);
+    if (qIdx != -1) {
+      final updated = List<ScreenerQuestionAdmin>.from(current.questions);
+      updated[qIdx] = updated[qIdx].copyWith(isActive: isActive);
+      final updatedScreener = current.copyWith(questions: updated);
+      saveScreener(updatedScreener, isNew: false);
+    }
   }
 
   // --- Risk Tier Actions ---
-  Future<void> updateRiskTier(
-    String screenerId,
-    RiskTierAdminConfig updatedTier,
-  ) async {
-    final current = screeners.firstWhereOrNull((s) => s.id == screenerId);
-    if (current == null) return;
+  void updateRiskTier(String screenerId, RiskTierAdminConfig tier) {
+    final idx = screeners.indexWhere((s) => s.id == screenerId);
+    if (idx == -1) return;
 
-    final updatedTiers = current.riskTiers.map((t) {
-      return t.key == updatedTier.key ? updatedTier : t;
-    }).toList();
+    final current = screeners[idx];
+    final updatedTiers = List<RiskTierAdminConfig>.from(current.riskTiers);
+    final tIdx = updatedTiers.indexWhere((t) => t.key == tier.key);
+    if (tIdx != -1) {
+      updatedTiers[tIdx] = tier;
+    } else {
+      updatedTiers.add(tier);
+    }
 
-    final updated = current.copyWith(riskTiers: updatedTiers);
-    await saveScreener(updated, isNew: false);
+    final updatedScreener = current.copyWith(riskTiers: updatedTiers);
+    saveScreener(updatedScreener, isNew: false);
   }
 }

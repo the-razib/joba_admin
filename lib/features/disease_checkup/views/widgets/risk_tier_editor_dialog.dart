@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:joba_admin/core/models/screener_admin_model.dart';
@@ -7,7 +8,7 @@ import 'package:joba_admin/core/widgets/bilingual_text_field.dart';
 
 class RiskTierEditorDialog extends StatefulWidget {
   final RiskTierAdminConfig tier;
-  final Future<void> Function(RiskTierAdminConfig updatedTier) onSave;
+  final FutureOr<void> Function(RiskTierAdminConfig updatedTier) onSave;
 
   const RiskTierEditorDialog({
     super.key,
@@ -18,7 +19,7 @@ class RiskTierEditorDialog extends StatefulWidget {
   static Future<void> show(
     BuildContext context, {
     required RiskTierAdminConfig tier,
-    required Future<void> Function(RiskTierAdminConfig updatedTier) onSave,
+    required FutureOr<void> Function(RiskTierAdminConfig updatedTier) onSave,
   }) {
     return showDialog(
       context: context,

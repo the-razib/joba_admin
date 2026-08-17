@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:joba_admin/core/models/screener_admin_model.dart';
@@ -8,7 +9,7 @@ import 'package:joba_admin/core/widgets/image_upload_field.dart';
 
 class ScreenerEditorDialog extends StatefulWidget {
   final ScreenerAdminModel? initialScreener;
-  final Future<void> Function(ScreenerAdminModel screener, bool isNew) onSave;
+  final FutureOr<void> Function(ScreenerAdminModel screener, bool isNew) onSave;
 
   const ScreenerEditorDialog({
     super.key,
@@ -19,7 +20,7 @@ class ScreenerEditorDialog extends StatefulWidget {
   static Future<void> show(
     BuildContext context, {
     ScreenerAdminModel? screener,
-    required Future<void> Function(ScreenerAdminModel screener, bool isNew)
+    required FutureOr<void> Function(ScreenerAdminModel screener, bool isNew)
     onSave,
   }) {
     return showDialog(

@@ -3,12 +3,10 @@ import 'package:get/get.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/theme/responsive.dart';
-import 'package:joba_admin/core/widgets/page_header.dart';
 import 'package:joba_admin/core/widgets/stat_card.dart';
 import 'package:joba_admin/features/disease_checkup/controllers/admin_screener_controller.dart';
 import 'package:joba_admin/features/disease_checkup/views/widgets/questions_pane.dart';
 import 'package:joba_admin/features/disease_checkup/views/widgets/risk_tiers_pane.dart';
-import 'package:joba_admin/features/disease_checkup/views/widgets/screener_editor_dialog.dart';
 import 'package:joba_admin/features/disease_checkup/views/widgets/screener_list_pane.dart';
 
 class AdminScreenerScreen extends GetView<AdminScreenerController> {
@@ -31,33 +29,7 @@ class AdminScreenerScreen extends GetView<AdminScreenerController> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                PageHeader(
-                  title: 'Disease Checkup & Screeners',
-                  subtitle:
-                      'Manage clinical self-assessment questionnaires, risk tiers, and doctor advice.',
-                  actions: isMobile
-                      ? const []
-                      : [
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              ScreenerEditorDialog.show(
-                                context,
-                                onSave: (screener, isNew) => controller
-                                    .saveScreener(screener, isNew: isNew),
-                              );
-                            },
-                            icon: const Icon(Icons.add, size: 16),
-                            label: const Text('Add Screener'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
-                        ],
-                ),
-                const SizedBox(height: 16),
-
-                // Standard Responsive KPI Stats Grid
+                // KPI Metric Cards at the very top (PageHeader removed per request)
                 _buildStatsGrid(context),
                 const SizedBox(height: 16),
 
@@ -146,7 +118,7 @@ class AdminScreenerScreen extends GetView<AdminScreenerController> {
         children: [
           // Left Pane: Screener List
           SizedBox(
-            width: isTablet ? 300 : 360,
+            width: isTablet ? 320 : 380,
             child: const ScreenerListPane(),
           ),
           SizedBox(width: isTablet ? 12 : 16),
@@ -198,7 +170,7 @@ class AdminScreenerScreen extends GetView<AdminScreenerController> {
   Widget _buildMobileWorkspace(BuildContext context) {
     return Obx(() {
       final tab = controller.mobileTab.value;
-      final selected = controller.selectedScreener.value;
+      final selected = controller.selectedScreener;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -223,7 +195,11 @@ class AdminScreenerScreen extends GetView<AdminScreenerController> {
                   'Questions (${selected?.questions.length ?? 0})',
                   1,
                 ),
-                _buildMobileTabButton(context, 'Guidance', 2),
+                _buildMobileTabButton(
+                  context,
+                  'Guidance',
+                  2,
+                ),
               ],
             ),
           ),
@@ -283,10 +259,7 @@ class AdminScreenerScreen extends GetView<AdminScreenerController> {
 
           // Active Mobile View Container
           SizedBox(
-            height: (MediaQuery.sizeOf(context).height * 0.68).clamp(
-              520.0,
-              760.0,
-            ),
+            height: 600,
             child: _buildMobileTabContent(tab),
           ),
         ],

@@ -31,7 +31,7 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 350));
 
-    expect(find.text('Disease Checkup & Screeners'), findsOneWidget);
+    expect(find.text('Active Tests'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     controller.mobileTab.value = 1;

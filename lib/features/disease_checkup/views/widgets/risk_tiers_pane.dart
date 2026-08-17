@@ -11,7 +11,7 @@ class RiskTiersPane extends GetView<AdminScreenerController> {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final s = controller.selectedScreener.value;
+      final s = controller.selectedScreener;
       if (s == null) {
         return const Center(
           child: Text('Select a screener to configure risk tiers'),

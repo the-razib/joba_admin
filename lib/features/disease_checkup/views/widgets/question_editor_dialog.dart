@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:joba_admin/core/models/screener_admin_model.dart';
@@ -7,7 +8,7 @@ import 'package:joba_admin/core/widgets/bilingual_text_field.dart';
 
 class QuestionEditorDialog extends StatefulWidget {
   final ScreenerQuestionAdmin? initialQuestion;
-  final Future<void> Function(ScreenerQuestionAdmin question, bool isNew)
+  final FutureOr<void> Function(ScreenerQuestionAdmin question, bool isNew)
   onSave;
 
   const QuestionEditorDialog({
@@ -19,7 +20,7 @@ class QuestionEditorDialog extends StatefulWidget {
   static Future<void> show(
     BuildContext context, {
     ScreenerQuestionAdmin? question,
-    required Future<void> Function(ScreenerQuestionAdmin question, bool isNew)
+    required FutureOr<void> Function(ScreenerQuestionAdmin question, bool isNew)
     onSave,
   }) {
     return showDialog(
