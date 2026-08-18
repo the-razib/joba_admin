@@ -5,10 +5,11 @@ import 'package:joba_admin/core/theme/responsive.dart';
 import 'package:joba_admin/features/articles/controllers/articles_controller.dart';
 import 'package:joba_admin/features/articles/views/widgets/article_editor_bilingual_section.dart';
 import 'package:joba_admin/features/articles/views/widgets/article_editor_media_section.dart';
+import 'package:joba_admin/features/articles/views/widgets/article_editor_medical_section.dart';
 import 'package:joba_admin/features/articles/views/widgets/article_editor_settings_sidebar.dart';
 
 /// Bilingual article editor screen: BN + EN titles/subtitles/content, thumbnail,
-/// per-language audio uploads, tags, publishing and SEO settings.
+/// per-language audio uploads, medical reviewer verification, tags, publishing and SEO settings.
 class ArticleEditorScreen extends StatefulWidget {
   const ArticleEditorScreen({
     super.key,
@@ -37,10 +38,14 @@ class _ArticleEditorScreenState extends State<ArticleEditorScreen> {
   late final TextEditingController _seoDesc;
   late final TextEditingController _order;
   late final TextEditingController _tagInput;
+  late final TextEditingController _medicalReviewerBn;
+  late final TextEditingController _medicalReviewerEn;
+  late final TextEditingController _readingTime;
 
   late String _categoryId;
   late ArticleStatus _status;
   late bool _featured;
+  late bool _isMedicallyReviewed;
   late final List<String> _tags;
   late String? _imagePath;
   late String? _audioBn;
@@ -61,9 +66,13 @@ class _ArticleEditorScreenState extends State<ArticleEditorScreen> {
     _seoDesc = TextEditingController(text: a.seoDescription);
     _order = TextEditingController(text: '${a.displayOrder}');
     _tagInput = TextEditingController();
+    _medicalReviewerBn = TextEditingController(text: a.medicalReviewerBn);
+    _medicalReviewerEn = TextEditingController(text: a.medicalReviewerEn);
+    _readingTime = TextEditingController(text: '${a.readingTimeMin}');
     _categoryId = a.categoryId;
     _status = a.status;
     _featured = a.featured;
+    _isMedicallyReviewed = a.isMedicallyReviewed;
     _tags = List.of(a.tags);
     _imagePath = a.imagePath.isEmpty ? null : a.imagePath;
     _audioBn = a.audioBnPath;
@@ -84,6 +93,9 @@ class _ArticleEditorScreenState extends State<ArticleEditorScreen> {
       _seoDesc,
       _order,
       _tagInput,
+      _medicalReviewerBn,
+      _medicalReviewerEn,
+      _readingTime,
     ]) {
       c.dispose();
     }
@@ -100,6 +112,7 @@ class _ArticleEditorScreenState extends State<ArticleEditorScreen> {
       return;
     }
     final orderVal = int.tryParse(_order.text.trim()) ?? 0;
+    final readingTimeVal = int.tryParse(_readingTime.text.trim()) ?? 3;
     final updated = widget.article.copyWith(
       titleBn: _titleBn.text.trim(),
       titleEn: _titleEn.text.trim(),
@@ -111,6 +124,10 @@ class _ArticleEditorScreenState extends State<ArticleEditorScreen> {
       status: _status,
       featured: _featured,
       displayOrder: orderVal,
+      readingTimeMin: readingTimeVal,
+      medicalReviewerBn: _medicalReviewerBn.text.trim(),
+      medicalReviewerEn: _medicalReviewerEn.text.trim(),
+      isMedicallyReviewed: _isMedicallyReviewed,
       tags: _tags,
       imagePath: _imagePath ?? '',
       audioBnPath: _audioBn,
@@ -135,6 +152,14 @@ class _ArticleEditorScreenState extends State<ArticleEditorScreen> {
           subEn: _subEn,
           contentBn: _contentBn,
           contentEn: _contentEn,
+        ),
+        const SizedBox(height: 16),
+        ArticleEditorMedicalSection(
+          isMedicallyReviewed: _isMedicallyReviewed,
+          medicalReviewerBn: _medicalReviewerBn,
+          medicalReviewerEn: _medicalReviewerEn,
+          readingTime: _readingTime,
+          onReviewedChanged: (val) => setState(() => _isMedicallyReviewed = val),
         ),
         const SizedBox(height: 16),
         ArticleEditorMediaSection(

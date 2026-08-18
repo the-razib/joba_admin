@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/widgets/bilingual_text_field.dart';
+import 'package:joba_admin/core/widgets/rich_markdown_editor.dart';
 
-/// Bilingual section of the Article Editor: Bengali & English title, subtitle, and markdown body inputs.
+/// Bilingual section of the Article Editor: Bengali & English title, subtitle, and rich markdown body inputs.
 class ArticleEditorBilingualSection extends StatelessWidget {
   const ArticleEditorBilingualSection({
     super.key,
@@ -32,7 +33,7 @@ class ArticleEditorBilingualSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Bilingual Content',
+              'Bilingual Content & Rich Formatting',
               style: TextStyle(
                 color: palette.textPrimary,
                 fontSize: 15,
@@ -41,7 +42,7 @@ class ArticleEditorBilingualSection extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Articles must be provided in both বাংলা and English.',
+              'Provide bilingual titles, summaries, and formatted Markdown content with live previews.',
               style: TextStyle(color: palette.textSecondary, fontSize: 11.5),
             ),
             const SizedBox(height: 16),
@@ -61,14 +62,34 @@ class ArticleEditorBilingualSection extends StatelessWidget {
               hintEn: 'Short summary for list views...',
               maxLines: 2,
             ),
+            const SizedBox(height: 18),
+            Text(
+              'Article Body (Markdown Supported)',
+              style: TextStyle(
+                color: palette.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Bengali Body Markdown Editor
+            RichMarkdownEditor(
+              label: 'বাংলা বিস্তারিত নিবন্ধ',
+              controller: contentBn,
+              isBengali: true,
+              hintText: 'বাংলায় বিস্তারিত নিবন্ধ লিখুন... (উপরের টুলবার দিয়ে বোল্ড, ইটালিক, পয়েন্ট, হেডিং যোগ করুন)',
+              minLines: 8,
+            ),
             const SizedBox(height: 14),
-            BilingualField(
-              label: 'Article Body (Markdown supported)',
-              bnController: contentBn,
-              enController: contentEn,
-              hintBn: 'বাংলায় বিস্তারিত নিবন্ধ লিখুন...',
-              hintEn: 'Full article text in English...',
-              maxLines: 12,
+
+            // English Body Markdown Editor
+            RichMarkdownEditor(
+              label: 'English Full Article Body',
+              controller: contentEn,
+              isBengali: false,
+              hintText: 'Full article text in English... (Use toolbar for bold, italic, bullets, headings, and quotes)',
+              minLines: 8,
             ),
           ],
         ),

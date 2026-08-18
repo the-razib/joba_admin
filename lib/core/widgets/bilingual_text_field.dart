@@ -65,12 +65,22 @@ class BilingualField extends StatelessWidget {
     required String hint,
     required TextStyle style,
   }) {
+    final palette = context.palette;
+    final hintStyle = (chip == 'BN'
+            ? AppTheme.bengali(context, fontSize: 13.5)
+            : const TextStyle(fontSize: 13.5))
+        .copyWith(
+      color: palette.textSecondary.withValues(alpha: 0.45),
+      fontWeight: FontWeight.w400,
+    );
+
     return TextField(
       controller: controller,
       maxLines: maxLines,
       style: style,
       decoration: InputDecoration(
         hintText: hint,
+        hintStyle: hintStyle,
         prefixIcon: Container(
           margin: const EdgeInsets.all(10),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

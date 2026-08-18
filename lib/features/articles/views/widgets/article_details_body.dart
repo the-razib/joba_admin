@@ -88,6 +88,58 @@ class _ArticleDetailsBodyState extends State<ArticleDetailsBody> {
                   ],
                 ),
                 const SizedBox(height: 14),
+                if (a.isMedicallyReviewed) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1EAE8D).withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFF1EAE8D).withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1EAE8D).withValues(alpha: 0.18),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.verified_rounded,
+                            color: Color(0xFF1EAE8D),
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${a.medicalReviewerBn} (মেডিকেল রিভিউ)',
+                                style: AppTheme.bengali(context).copyWith(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: palette.textPrimary,
+                                ),
+                              ),
+                              Text(
+                                '⏱️ ${a.readingTimeMin} মিনিট পড়া • Verified Medical Content',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: palette.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 _metaRow(context, 'Slug', a.slug, copyable: true),
                 _metaRow(
                   context,

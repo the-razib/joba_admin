@@ -101,9 +101,13 @@ class ArticlesController extends GetxController {
   void startAdd() {
     editing.value = Article(
       id: const Uuid().v4(),
-      categoryId: selectedCategoryId.value ?? 'period',
+      categoryId: selectedCategoryId.value ?? 'care',
       titleBn: '',
       titleEn: '',
+      medicalReviewerBn: 'ডাঃ সাবরিনা সুলতানা',
+      medicalReviewerEn: 'Dr. Sabrina Sultana',
+      isMedicallyReviewed: true,
+      readingTimeMin: 3,
       status: ArticleStatus.draft,
       displayOrder: filteredArticles.length,
       createdAt: DateTime.now(),
@@ -155,7 +159,14 @@ class ArticlesController extends GetxController {
   }
 
   // ---- categories & tags ----
-  void addCategory({required String nameBn, required String nameEn}) {
+  void addCategory({
+    required String nameBn,
+    required String nameEn,
+    String subtitleBn = '',
+    String subtitleEn = '',
+    String imagePath = '',
+    bool isFullWidth = false,
+  }) {
     final id = nameEn.trim().toLowerCase().replaceAll(
       RegExp(r'[^a-z0-9]+'),
       '_',
@@ -165,15 +176,34 @@ class ArticlesController extends GetxController {
         id: id,
         nameBn: nameBn,
         nameEn: nameEn,
+        subtitleBn: subtitleBn,
+        subtitleEn: subtitleEn,
+        imagePath: imagePath.isEmpty ? 'assets/images/articles/article_care.jpg' : imagePath,
+        isFullWidth: isFullWidth,
         order: categories.length,
       ),
     );
+  }
+
+  void updateCategory(ArticleCategory cat) {
+    final i = categories.indexWhere((c) => c.id == cat.id);
+    if (i >= 0) {
+      categories[i] = cat;
+    }
   }
 
   void toggleCategory(String id) {
     final i = categories.indexWhere((c) => c.id == id);
     if (i >= 0) {
       categories[i] = categories[i].copyWith(active: !categories[i].active);
+    }
+  }
+
+  void deleteCategory(String id) {
+    categories.removeWhere((c) => c.id == id);
+    if (selectedCategoryId.value == id && categories.isNotEmpty) {
+      selectedCategoryId.value = categories.first.id;
+      _selectFirstArticle();
     }
   }
 

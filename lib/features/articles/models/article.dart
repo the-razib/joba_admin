@@ -11,7 +11,7 @@ enum ArticleStatus {
 }
 
 /// Mirrors the app's bilingual `articles` Firestore schema and extends it
-/// with admin-only fields (audio, SEO, stats) that the app safely ignores.
+/// with admin-only fields (audio, SEO, stats, medical review) that the app safely ignores.
 class Article {
   const Article({
     required this.id,
@@ -34,6 +34,9 @@ class Article {
     this.commentsCount = 0,
     this.shares = 0,
     this.readingTimeMin = 3,
+    this.medicalReviewerBn = 'ডাঃ সাবরিনা সুলতানা',
+    this.medicalReviewerEn = 'Dr. Sabrina Sultana',
+    this.isMedicallyReviewed = true,
     this.slug = '',
     this.seoTitle = '',
     this.seoDescription = '',
@@ -63,6 +66,9 @@ class Article {
   final int commentsCount;
   final int shares;
   final int readingTimeMin;
+  final String medicalReviewerBn;
+  final String medicalReviewerEn;
+  final bool isMedicallyReviewed;
   final String slug;
   final String seoTitle;
   final String seoDescription;
@@ -86,6 +92,10 @@ class Article {
     ArticleStatus? status,
     bool? featured,
     int? displayOrder,
+    int? readingTimeMin,
+    String? medicalReviewerBn,
+    String? medicalReviewerEn,
+    bool? isMedicallyReviewed,
     String? slug,
     String? seoTitle,
     String? seoDescription,
@@ -112,7 +122,10 @@ class Article {
         likes: likes,
         commentsCount: commentsCount,
         shares: shares,
-        readingTimeMin: readingTimeMin,
+        readingTimeMin: readingTimeMin ?? this.readingTimeMin,
+        medicalReviewerBn: medicalReviewerBn ?? this.medicalReviewerBn,
+        medicalReviewerEn: medicalReviewerEn ?? this.medicalReviewerEn,
+        isMedicallyReviewed: isMedicallyReviewed ?? this.isMedicallyReviewed,
         slug: slug ?? this.slug,
         seoTitle: seoTitle ?? this.seoTitle,
         seoDescription: seoDescription ?? this.seoDescription,
