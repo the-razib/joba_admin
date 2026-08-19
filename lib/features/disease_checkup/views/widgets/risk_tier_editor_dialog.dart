@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/features/disease_checkup/models/screener_admin_model.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
@@ -65,18 +65,16 @@ class _RiskTierEditorDialogState extends State<RiskTierEditorDialog> {
   Future<void> _submit() async {
     if (_isSaving) return;
     if (_labelBnCtrl.text.trim().isEmpty || _labelEnCtrl.text.trim().isEmpty) {
-      Get.snackbar(
+      AppToast.warning(
         'Missing label',
         'Both বাংলা and English tier labels are required.',
-        snackPosition: SnackPosition.BOTTOM,
       );
       return;
     }
     if (_descBnCtrl.text.trim().isEmpty || _descEnCtrl.text.trim().isEmpty) {
-      Get.snackbar(
+      AppToast.warning(
         'Missing guidance',
         'Both বাংলা and English clinical advice texts are required.',
-        snackPosition: SnackPosition.BOTTOM,
       );
       return;
     }

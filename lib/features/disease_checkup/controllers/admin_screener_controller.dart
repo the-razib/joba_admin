@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/features/disease_checkup/models/screener_admin_model.dart';
 import 'package:joba_admin/core/repositories/screener_repository.dart';
 
@@ -35,7 +36,7 @@ class AdminScreenerController extends GetxController {
         selectedScreenerId.value = '';
       }
     } catch (e) {
-      Get.snackbar('Error', 'Failed to load screeners: $e');
+      AppToast.error('Error', 'Failed to load screeners: $e');
     } finally {
       loading.value = false;
     }
@@ -96,7 +97,7 @@ class AdminScreenerController extends GetxController {
         final created = await _repository.createScreener(screener);
         screeners.add(created);
         selectedScreenerId.value = created.id;
-        Get.snackbar('Success', 'Created screener "${screener.nameEn}"');
+        AppToast.success('Success', 'Created screener "${screener.nameEn}"');
       } else {
         final updated = await _repository.updateScreener(screener);
         final idx = screeners.indexWhere((s) => s.id == screener.id);
@@ -104,10 +105,10 @@ class AdminScreenerController extends GetxController {
           screeners[idx] = updated;
         }
         selectedScreenerId.value = updated.id;
-        Get.snackbar('Success', 'Updated screener "${screener.nameEn}"');
+        AppToast.success('Success', 'Updated screener "${screener.nameEn}"');
       }
     } catch (e) {
-      Get.snackbar('Error', 'Failed to save screener: $e');
+      AppToast.error('Error', 'Failed to save screener: $e');
     }
   }
 
@@ -120,10 +121,10 @@ class AdminScreenerController extends GetxController {
           selectedScreenerId.value =
               screeners.isNotEmpty ? screeners.first.id : '';
         }
-        Get.snackbar('Success', 'Screener deleted successfully.');
+        AppToast.success('Success', 'Screener deleted successfully.');
       }
     } catch (e) {
-      Get.snackbar('Error', 'Failed to delete screener: $e');
+      AppToast.error('Error', 'Failed to delete screener: $e');
     }
   }
 
@@ -137,7 +138,7 @@ class AdminScreenerController extends GetxController {
         }
       }
     } catch (e) {
-      Get.snackbar('Error', 'Failed to update active status: $e');
+      AppToast.error('Error', 'Failed to update active status: $e');
     }
   }
 

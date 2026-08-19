@@ -26,7 +26,7 @@ class AppPalette {
     border: AppColors.borderLight,
     textPrimary: AppColors.textPrimaryLight,
     textSecondary: AppColors.textSecondaryLight,
-    inputFill: Color(0xFFF1F4F2),
+    inputFill: AppColors.inputFillLight,
   );
 
   static const dark = AppPalette(
@@ -35,7 +35,7 @@ class AppPalette {
     border: AppColors.borderDark,
     textPrimary: AppColors.textPrimaryDark,
     textSecondary: AppColors.textSecondaryDark,
-    inputFill: Color(0xFF1A2C24),
+    inputFill: AppColors.inputFillDark,
   );
 }
 
@@ -74,7 +74,8 @@ class AppTheme {
     return base.copyWith(
       cardTheme: CardThemeData(
         color: palette.card,
-        elevation: 0,
+        elevation: isLight ? 1 : 0,
+        shadowColor: Colors.black.withValues(alpha: 0.04),
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -86,7 +87,9 @@ class AppTheme {
         fillColor: palette.inputFill,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        hintStyle: textTheme.bodyMedium?.copyWith(color: palette.textSecondary),
+        hintStyle: textTheme.bodyMedium?.copyWith(
+          color: palette.textSecondary.withValues(alpha: 0.5),
+        ),
         border: _outline(palette),
         enabledBorder: _outline(palette),
         focusedBorder: _outline(palette, color: AppColors.primary),
@@ -127,17 +130,20 @@ class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
+        backgroundColor: isLight ? const Color(0xFF1E293B) : const Color(0xFF1E293B),
+        contentTextStyle: const TextStyle(color: Colors.white),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: palette.card,
-        elevation: 0,
+        elevation: 16,
+        shadowColor: Colors.black.withValues(alpha: 0.25),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           side: BorderSide(color: palette.border),
         ),
       ),
-      drawerTheme: DrawerThemeData(
+      drawerTheme: const DrawerThemeData(
         backgroundColor: AppColors.sidebarBg,
         elevation: 0,
       ),
@@ -150,11 +156,14 @@ class AppTheme {
       ),
       popupMenuTheme: PopupMenuThemeData(
         color: palette.card,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: palette.border),
+        ),
       ),
       tooltipTheme: const TooltipThemeData(
         decoration: BoxDecoration(
-          color: AppColors.sidebarBg,
+          color: Color(0xFF1E293B),
           borderRadius: BorderRadius.all(Radius.circular(8)),
         ),
         textStyle: TextStyle(color: Colors.white, fontSize: 12),
@@ -162,13 +171,13 @@ class AppTheme {
     );
   }
 
-  static TextTheme _lightText() => TextTheme(
+  static TextTheme _lightText() => const TextTheme(
         bodyMedium: TextStyle(color: AppColors.textPrimaryLight),
         bodySmall: TextStyle(color: AppColors.textSecondaryLight),
         labelLarge: TextStyle(color: AppColors.textPrimaryLight),
       );
 
-  static TextTheme _darkText() => TextTheme(
+  static TextTheme _darkText() => const TextTheme(
         bodyMedium: TextStyle(color: AppColors.textPrimaryDark),
         bodySmall: TextStyle(color: AppColors.textSecondaryDark),
         labelLarge: TextStyle(color: AppColors.textPrimaryDark),

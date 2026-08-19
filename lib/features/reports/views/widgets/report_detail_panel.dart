@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:joba_admin/features/reports/models/report.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/core/utils/format.dart';
 import 'package:joba_admin/core/widgets/avatar_circle.dart';
 import 'package:joba_admin/core/widgets/badges.dart';
@@ -251,10 +252,9 @@ class ReportDetailFooter extends GetView<ReportsController> {
         children: [
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: () => Get.snackbar(
+              onPressed: () => AppToast.info(
                 'Assigned',
                 'Report assigned to support team (mock).',
-                snackPosition: SnackPosition.BOTTOM,
               ),
               icon: const Icon(Icons.person_add_alt_outlined, size: 16),
               label: const Text('Assign to Team'),
@@ -265,10 +265,9 @@ class ReportDetailFooter extends GetView<ReportsController> {
             child: PopupMenuButton<ReportStatus>(
               onSelected: (status) {
                 controller.updateStatus(id, status);
-                Get.snackbar(
+                AppToast.success(
                   'Status updated',
                   'Report marked as ${status.displayName} (mock).',
-                  snackPosition: SnackPosition.BOTTOM,
                 );
               },
               child: Container(

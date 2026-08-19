@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:joba_admin/features/users/models/app_user.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/core/utils/format.dart';
 import 'package:joba_admin/core/widgets/avatar_circle.dart';
 import 'package:joba_admin/core/widgets/badges.dart';
@@ -269,10 +270,9 @@ class _UserDetailFooterState extends State<UserDetailFooter> {
                 if (_status != null) controller.updateStatus(u.uid, _status!);
                 if (_plan != null) controller.updatePlan(u.uid, _plan!);
                 Navigator.of(context).pop();
-                Get.snackbar(
+                AppToast.success(
                   'User updated',
                   'Changes saved (mock).',
-                  snackPosition: SnackPosition.BOTTOM,
                 );
               },
               child: const Text('Save Changes'),

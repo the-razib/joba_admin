@@ -20,7 +20,7 @@ class LoginScreen extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: context.isDark
-                ? const [AppColors.backgroundDark, Color(0xFF11241D)]
+                ? const [AppColors.backgroundDark, Color(0xFF131B26)]
                 : const [AppColors.backgroundLight, AppColors.primaryLight],
           ),
         ),

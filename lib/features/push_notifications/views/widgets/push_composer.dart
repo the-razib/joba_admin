@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:joba_admin/features/push_notifications/models/push_notification.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/core/widgets/bilingual_text_field.dart';
 import 'package:joba_admin/core/widgets/detail_panel.dart';
 import 'package:joba_admin/features/push_notifications/controllers/push_controller.dart';
@@ -514,12 +515,11 @@ class _ComposerFooter extends StatelessWidget {
           await controller.save(campaign, send: send);
           if (!context.mounted) return;
           Navigator.of(context, rootNavigator: true).pop();
-          Get.snackbar(
+          AppToast.success(
             send ? 'Notification sent' : 'Draft saved',
             send
                 ? 'Queued to ${campaign.channel.label} (mock).'
                 : 'Draft stored for later (mock).',
-            snackPosition: SnackPosition.BOTTOM,
           );
         }
 

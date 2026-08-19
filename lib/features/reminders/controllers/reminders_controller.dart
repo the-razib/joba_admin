@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:joba_admin/features/users/models/app_user.dart';
 import 'package:joba_admin/features/reminders/models/reminder_template.dart';
 import 'package:joba_admin/core/repositories/user_repository.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 
 class RemindersController extends GetxController {
   final UserRepository repo = Get.find();
@@ -95,10 +97,9 @@ class RemindersController extends GetxController {
     await Future<void>.delayed(const Duration(milliseconds: 400));
     _savedOrder.assignAll(order);
     saving.value = false;
-    Get.snackbar(
+    AppToast.success(
       'Reminder order saved',
       'Every user\'s home screen now plans reminders in this sequence (mock).',
-      snackPosition: SnackPosition.BOTTOM,
     );
   }
 }

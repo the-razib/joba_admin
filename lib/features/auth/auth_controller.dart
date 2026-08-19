@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:joba_admin/core/services/auth_service.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/routes/app_routes.dart';
 
 class AuthController extends GetxController {
@@ -23,10 +24,9 @@ class AuthController extends GetxController {
     if (ok) {
       Get.offAllNamed(AppRoutes.shell);
     } else {
-      Get.snackbar(
+      AppToast.error(
         'Login failed',
         'Invalid email or password. Try a demo account below.',
-        snackPosition: SnackPosition.BOTTOM,
       );
     }
   }

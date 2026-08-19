@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:joba_admin/features/admin_management/models/admin_user.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/features/admin_management/controllers/admin_management_controller.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 
 /// Modal dialog for inviting a new administrator and assigning initial role.
 class InviteAdminDialog extends StatefulWidget {
@@ -99,10 +100,9 @@ class _InviteAdminDialogState extends State<InviteAdminDialog> {
                         role: _role,
                       );
                       Navigator.of(context).pop();
-                      Get.snackbar(
+                      AppToast.success(
                         'Invite sent',
                         '$email invited as ${_role.label} (mock).',
-                        snackPosition: SnackPosition.BOTTOM,
                       );
                     },
                     child: const Text('Send Invite'),

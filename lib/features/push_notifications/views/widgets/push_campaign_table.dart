@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:joba_admin/features/push_notifications/models/push_notification.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/core/utils/format.dart';
 import 'package:joba_admin/core/widgets/adaptive_data_table.dart';
 import 'package:joba_admin/core/widgets/badges.dart';
@@ -217,10 +218,9 @@ class _RowActions extends GetView<PushController> {
             ),
             onPressed: () async {
               await controller.resend(p.id);
-              Get.snackbar(
+              AppToast.success(
                 'Resent',
                 'Notification queued again (mock).',
-                snackPosition: SnackPosition.BOTTOM,
               );
             },
           ),

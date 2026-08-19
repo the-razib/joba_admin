@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:joba_admin/features/articles/models/article.dart';
 import 'package:joba_admin/features/articles/models/article_category.dart';
 import 'package:joba_admin/core/repositories/article_repository.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:uuid/uuid.dart';
 
 class ArticlesController extends GetxController {
@@ -131,12 +132,11 @@ class ArticlesController extends GetxController {
     }
     selectedArticleId.value = bumped.id;
     editing.value = null;
-    Get.snackbar(
+    AppToast.success(
       'Article saved',
       editingIsNew.value
           ? 'Article created (mock).'
           : 'Version ${bumped.version} saved (mock).',
-      snackPosition: SnackPosition.BOTTOM,
     );
   }
 

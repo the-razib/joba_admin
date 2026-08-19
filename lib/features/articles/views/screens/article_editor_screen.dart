@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart' hide Value;
 import 'package:joba_admin/features/articles/models/article.dart';
 import 'package:joba_admin/core/theme/responsive.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/features/articles/controllers/articles_controller.dart';
 import 'package:joba_admin/features/articles/views/widgets/article_editor_bilingual_section.dart';
 import 'package:joba_admin/features/articles/views/widgets/article_editor_media_section.dart';
@@ -104,10 +105,9 @@ class _ArticleEditorScreenState extends State<ArticleEditorScreen> {
 
   void _save() {
     if (_titleBn.text.trim().isEmpty || _titleEn.text.trim().isEmpty) {
-      Get.snackbar(
+      AppToast.warning(
         'Missing titles',
         'Both বাংলা and English titles are required.',
-        snackPosition: SnackPosition.BOTTOM,
       );
       return;
     }

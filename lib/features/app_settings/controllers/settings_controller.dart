@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/features/admin_management/models/admin_user.dart';
 import 'package:joba_admin/core/services/auth_service.dart';
 
@@ -86,10 +87,9 @@ class SettingsController extends GetxController {
     saving.value = true;
     await Future<void>.delayed(const Duration(milliseconds: 500));
     saving.value = false;
-    Get.snackbar(
+    AppToast.success(
       'Settings saved',
       'The app picks these up on next launch via app_config (mock).',
-      snackPosition: SnackPosition.BOTTOM,
     );
   }
 }

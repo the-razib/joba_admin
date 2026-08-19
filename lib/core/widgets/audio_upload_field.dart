@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/core/utils/format.dart';
 import 'package:just_audio/just_audio.dart';
 
@@ -97,15 +98,10 @@ class _AudioUploadFieldState extends State<AudioUploadField> {
         } else if (widget.currentPath != null) {
           await player.setUrl(widget.currentPath!);
         } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Web preview is available after upload (Phase 3 Storage).',
-                ),
-              ),
-            );
-          }
+          AppToast.info(
+            'Preview not available',
+            'Web preview is available after upload (Phase 3 Storage).',
+          );
           return;
         }
       }
@@ -118,11 +114,10 @@ class _AudioUploadFieldState extends State<AudioUploadField> {
         }
       });
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not play this audio file.')),
-        );
-      }
+      AppToast.error(
+        'Audio Error',
+        'Could not play this audio file.',
+      );
     }
   }
 

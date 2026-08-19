@@ -29,7 +29,7 @@ class DashboardPushBanner extends StatelessWidget {
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.palette.card,
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(

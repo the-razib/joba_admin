@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:joba_admin/features/users/models/app_user.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/core/widgets/confirm_dialog.dart';
 import 'package:joba_admin/features/users/controllers/users_controller.dart';
 import 'package:joba_admin/features/users/views/user_detail_panel.dart';
@@ -97,10 +98,9 @@ class UserActionButtons extends GetView<UsersController> {
         u.uid,
         u.status == UserStatus.blocked ? UserStatus.active : UserStatus.blocked,
       );
-      Get.snackbar(
+      AppToast.success(
         'User updated',
         '${u.name} ${u.status == UserStatus.blocked ? 'unblocked' : 'blocked'} (mock).',
-        snackPosition: SnackPosition.BOTTOM,
       );
     } else if (action == 'delete') {
       final ok = await showConfirmDialog(
@@ -113,10 +113,9 @@ class UserActionButtons extends GetView<UsersController> {
       );
       if (ok) {
         controller.remove(u.uid);
-        Get.snackbar(
+        AppToast.success(
           'User deleted',
           '${u.name} removed (mock).',
-          snackPosition: SnackPosition.BOTTOM,
         );
       }
     }

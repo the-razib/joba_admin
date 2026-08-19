@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/widgets/avatar_circle.dart';
 import 'package:joba_admin/features/avatars/controllers/avatars_controller.dart';
@@ -73,10 +74,9 @@ Future<void> uploadAvatarsFlow(BuildContext context) async {
                     onPressed: () {
                       controller.addPicked(picked);
                       Navigator.of(context).pop();
-                      Get.snackbar(
+                      AppToast.success(
                         'Avatars added',
                         '${picked.length} avatar(s) published (mock).',
-                        snackPosition: SnackPosition.BOTTOM,
                       );
                     },
                     child: const Text('Publish'),

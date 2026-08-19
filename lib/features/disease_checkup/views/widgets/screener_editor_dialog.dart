@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/features/disease_checkup/models/screener_admin_model.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
@@ -79,18 +79,16 @@ class _ScreenerEditorDialogState extends State<ScreenerEditorDialog> {
   Future<void> _submit() async {
     if (_isSaving) return;
     if (_nameBnCtrl.text.trim().isEmpty || _nameEnCtrl.text.trim().isEmpty) {
-      Get.snackbar(
+      AppToast.warning(
         'Missing title',
         'Both বাংলা and English names are required.',
-        snackPosition: SnackPosition.BOTTOM,
       );
       return;
     }
     if (_isNew && _idCtrl.text.trim().isEmpty) {
-      Get.snackbar(
+      AppToast.warning(
         'Missing ID',
         'Screener ID is required.',
-        snackPosition: SnackPosition.BOTTOM,
       );
       return;
     }

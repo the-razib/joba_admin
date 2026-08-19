@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/features/premium/models/premium.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/features/premium/controllers/premium_controller.dart';
@@ -87,10 +88,9 @@ class _CreatePromoDialogState extends State<CreatePromoDialog> {
                         ),
                       );
                       Navigator.of(context).pop();
-                      Get.snackbar(
+                      AppToast.success(
                         'Promo created',
                         '$code ($percent% off) is live (mock).',
-                        snackPosition: SnackPosition.BOTTOM,
                       );
                     },
                     child: const Text('Create'),

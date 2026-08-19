@@ -5,6 +5,7 @@ import 'package:joba_admin/core/services/theme_service.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/theme/responsive.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/core/widgets/avatar_circle.dart';
 import 'package:joba_admin/features/shell/shell_controller.dart';
 import 'package:joba_admin/routes/app_routes.dart';
@@ -116,10 +117,9 @@ class TopBar extends GetView<ShellController> implements PreferredSizeWidget {
                 ),
               ],
             ),
-            onPressed: () => Get.snackbar(
+            onPressed: () => AppToast.info(
               'Notifications',
               '6 pending items — full inbox ships in Phase 2.',
-              snackPosition: SnackPosition.BOTTOM,
             ),
           ),
           const SizedBox(width: 6),

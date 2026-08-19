@@ -5,8 +5,8 @@ import 'package:joba_admin/core/widgets/app_logo.dart';
 import 'package:joba_admin/features/shell/nav_items.dart';
 import 'package:joba_admin/features/shell/shell_controller.dart';
 
-/// Dark-green navigation sidebar. `rail` renders the 76px icon rail
-/// used on tablet / collapsed desktop.
+/// Proper black navigation sidebar with crisp high-contrast typography and subtle borders.
+/// `rail` renders the 76px icon rail used on tablet / collapsed desktop.
 class Sidebar extends GetView<ShellController> {
   const Sidebar({super.key, this.rail = false});
 
@@ -16,7 +16,12 @@ class Sidebar extends GetView<ShellController> {
   Widget build(BuildContext context) {
     return Container(
       width: rail ? 76 : 260,
-      color: AppColors.sidebarBg,
+      decoration: const BoxDecoration(
+        color: AppColors.sidebarBg,
+        border: Border(
+          right: BorderSide(color: AppColors.sidebarBorder, width: 1),
+        ),
+      ),
       child: Column(
         children: [
           _header(),
@@ -30,34 +35,41 @@ class Sidebar extends GetView<ShellController> {
 
   Widget _header() {
     return Padding(
-      // The 76px rail cannot fit the 42px mark inside the 20px gutters.
       padding: rail
           ? const EdgeInsets.fromLTRB(0, 22, 0, 10)
-          : const EdgeInsets.fromLTRB(20, 22, 20, 10),
+          : const EdgeInsets.fromLTRB(16, 22, 16, 10),
       child: Row(
         mainAxisAlignment: rail
             ? MainAxisAlignment.center
             : MainAxisAlignment.start,
         children: [
-          const AppLogo(size: 42),
+          const AppLogo(size: 40),
           if (!rail) ...[
             const SizedBox(width: 10),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Joba',
-                  style: TextStyle(
-                    color: Color(0xFF2FD079),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Joba',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                    ),
                   ),
-                ),
-                Text(
-                  'Period Tracker',
-                  style: TextStyle(color: AppColors.sidebarText, fontSize: 11),
-                ),
-              ],
+                  Text(
+                    'Period Tracker',
+                    style: TextStyle(
+                      color: AppColors.sidebarText,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ],
@@ -74,14 +86,14 @@ class Sidebar extends GetView<ShellController> {
               item.administration &&
               item == navItems.firstWhere((n) => n.administration))
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 14, 8, 6),
+              padding: const EdgeInsets.fromLTRB(10, 16, 8, 8),
               child: Text(
                 'ADMINISTRATION',
                 style: TextStyle(
-                  color: AppColors.sidebarText.withValues(alpha: 0.7),
+                  color: AppColors.sidebarText.withValues(alpha: 0.65),
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 1.1,
+                  letterSpacing: 1.2,
                 ),
               ),
             ),
@@ -94,14 +106,17 @@ class Sidebar extends GetView<ShellController> {
   Widget _tile(NavItem item) {
     final selected = controller.current == item.id;
     final tile = InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(10),
       onTap: () => controller.select(item.id),
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 2),
-        padding: EdgeInsets.symmetric(horizontal: rail ? 0 : 14, vertical: 11),
+        padding: EdgeInsets.symmetric(horizontal: rail ? 0 : 12, vertical: 10),
         decoration: BoxDecoration(
           color: selected ? AppColors.sidebarActive : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
+          border: selected
+              ? Border.all(color: AppColors.sidebarBorder, width: 1)
+              : null,
         ),
         child: Row(
           mainAxisAlignment: rail
@@ -110,8 +125,8 @@ class Sidebar extends GetView<ShellController> {
           children: [
             Icon(
               item.icon,
-              size: 20,
-              color: selected ? Colors.white : AppColors.sidebarText,
+              size: 19,
+              color: selected ? AppColors.primary : AppColors.sidebarText,
             ),
             if (!rail) ...[
               const SizedBox(width: 12),
@@ -127,6 +142,15 @@ class Sidebar extends GetView<ShellController> {
                   ),
                 ),
               ),
+              if (selected)
+                Container(
+                  width: 5,
+                  height: 5,
+                  decoration: const BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
             ],
           ],
         ),
@@ -137,58 +161,45 @@ class Sidebar extends GetView<ShellController> {
 
   Widget _footer() {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: AppColors.sidebarActive,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.sidebarBorder, width: 1),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              "You're Pro! 🎉",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Thank you for being an amazing admin.',
-              style: TextStyle(
-                color: AppColors.sidebarText,
-                fontSize: 11.5,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 10),
             Row(
               children: [
                 Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.workspace_premium,
-                    color: Color(0xFF2FD079),
-                    size: 19,
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 7),
                 Text(
-                  'v1.0.0',
+                  'Version',
                   style: TextStyle(
-                    color: AppColors.sidebarText.withValues(alpha: 0.7),
-                    fontSize: 10.5,
+                    color: AppColors.sidebarText.withValues(alpha: 0.8),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
+            ),
+            Text(
+              'v1.0.0',
+              style: TextStyle(
+                color: AppColors.sidebarText.withValues(alpha: 0.8),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),

@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/features/disease_checkup/models/screener_admin_model.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
@@ -67,10 +67,9 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
   Future<void> _submit() async {
     if (_isSaving) return;
     if (_bnCtrl.text.trim().isEmpty || _enCtrl.text.trim().isEmpty) {
-      Get.snackbar(
+      AppToast.warning(
         'Missing question text',
         'Both বাংলা and English question texts are required.',
-        snackPosition: SnackPosition.BOTTOM,
       );
       return;
     }
