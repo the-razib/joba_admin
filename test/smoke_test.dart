@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import 'package:joba_admin/features/admin_management/models/admin_user.dart';
 import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/services/theme_service.dart';
+import 'package:joba_admin/features/dashboard/views/widgets/country_distribution_card.dart';
+import 'package:joba_admin/features/dashboard/views/widgets/user_activity_chart_card.dart';
 import 'package:joba_admin/main.dart';
 
 void main() {
@@ -32,6 +34,14 @@ void main() {
     expect(find.text('Dashboard'), findsWidgets);
     expect(find.text('User Activity Overview'), findsOneWidget);
     expect(find.text('Users by Country'), findsOneWidget);
+
+    final activityCardFinder = find.byType(UserActivityChartCard);
+    final countryCardFinder = find.byType(CountryDistributionCard);
+    expect(activityCardFinder, findsOneWidget);
+    expect(countryCardFinder, findsOneWidget);
+    final activitySize = tester.getSize(activityCardFinder);
+    final countrySize = tester.getSize(countryCardFinder);
+    expect(countrySize.height, equals(activitySize.height));
   });
 
   testWidgets('mobile layout shows bottom navigation', (tester) async {

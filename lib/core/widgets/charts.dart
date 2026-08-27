@@ -166,7 +166,7 @@ class DonutSlice {
   final Color color;
 }
 
-/// Donut chart with legend; stacks vertically on mobile.
+/// Donut chart with legend; stacks vertically on narrow screens.
 class DonutChart extends StatelessWidget {
   const DonutChart({
     super.key,
@@ -186,86 +186,106 @@ class DonutChart extends StatelessWidget {
     final palette = context.palette;
     final total = slices.fold<double>(0, (a, s) => a + s.value);
 
-    final chart = SizedBox(
-      width: size,
-      height: size,
-      child: PieChart(
-        PieChartData(
-          sectionsSpace: 2,
-          centerSpaceRadius: size * 0.32,
-          centerSpaceColor: Colors.transparent,
-          sections: [
-            for (final s in slices)
-              PieChartSectionData(
-                value: s.value,
-                color: s.color,
-                radius: size * 0.16,
-                title: '',
-              ),
-          ],
-          pieTouchData: PieTouchData(enabled: false),
-        ),
-      ),
-    );
-
-    final center = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          centerValue,
-          style: TextStyle(
-            color: palette.textPrimary,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        Text(
-          centerLabel,
-          style: TextStyle(color: palette.textSecondary, fontSize: 11),
-        ),
-      ],
-    );
-
-    final legend = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final s in slices) ...[
-          Row(
-            children: [
-              Container(
-                width: 9,
-                height: 9,
-                decoration: BoxDecoration(
-                  color: s.color,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  s.label,
-                  style: TextStyle(color: palette.textPrimary, fontSize: 12.5),
-                ),
-              ),
-              Text(
-                '${total == 0 ? 0 : (s.value / total * 100).toStringAsFixed(1)}%',
-                style: TextStyle(
-                  color: palette.textSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-        ],
-      ],
-    );
-
     return LayoutBuilder(
       builder: (context, c) {
-        if (c.maxWidth < 420) {
+        final isNarrow =
+            c.maxWidth < 300 && (!c.hasBoundedHeight || c.maxHeight >= 320);
+
+        final effectiveSize = isNarrow
+            ? size
+            : (c.hasBoundedHeight
+                ? size.clamp(100.0, (c.maxHeight - 16.0).clamp(100.0, size))
+                : (c.maxWidth < 380
+                    ? (c.maxWidth * 0.42).clamp(120.0, size)
+                    : size));
+
+        final chart = SizedBox(
+          width: effectiveSize,
+          height: effectiveSize,
+          child: PieChart(
+            PieChartData(
+              sectionsSpace: 2,
+              centerSpaceRadius: effectiveSize * 0.32,
+              centerSpaceColor: Colors.transparent,
+              sections: [
+                for (final s in slices)
+                  PieChartSectionData(
+                    value: s.value,
+                    color: s.color,
+                    radius: effectiveSize * 0.16,
+                    title: '',
+                  ),
+              ],
+              pieTouchData: PieTouchData(enabled: false),
+            ),
+          ),
+        );
+
+        final center = Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              centerValue,
+              style: TextStyle(
+                color: palette.textPrimary,
+                fontSize: effectiveSize < 140 ? 14 : 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            Text(
+              centerLabel,
+              style: TextStyle(
+                color: palette.textSecondary,
+                fontSize: effectiveSize < 140 ? 9.5 : 11,
+              ),
+            ),
+          ],
+        );
+
+        final legend = Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final s in slices) ...[
+              Row(
+                children: [
+                  Container(
+                    width: 9,
+                    height: 9,
+                    decoration: BoxDecoration(
+                      color: s.color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      s.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          TextStyle(color: palette.textPrimary, fontSize: 12.5),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${total == 0 ? 0 : (s.value / total * 100).toStringAsFixed(1)}%',
+                    style: TextStyle(
+                      color: palette.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+          ],
+        );
+
+        if (isNarrow) {
           return Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Stack(alignment: Alignment.center, children: [chart, center]),
               const SizedBox(height: 16),
@@ -273,10 +293,11 @@ class DonutChart extends StatelessWidget {
             ],
           );
         }
+
         return Row(
           children: [
             Stack(alignment: Alignment.center, children: [chart, center]),
-            const SizedBox(width: 20),
+            const SizedBox(width: 16),
             Expanded(child: legend),
           ],
         );

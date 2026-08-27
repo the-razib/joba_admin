@@ -34,7 +34,7 @@ class AvatarGridView extends GetView<AvatarsController> {
             tablet: 5,
             desktop: 6,
           ),
-          mainAxisExtent: 168,
+          mainAxisExtent: 180,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),

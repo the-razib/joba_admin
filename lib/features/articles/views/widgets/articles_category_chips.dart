@@ -9,26 +9,34 @@ class ArticlesCategoryChips extends GetView<ArticlesController> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 34,
-      child: Obx(
-        () => ListView.separated(
+      height: 40,
+      child: Obx(() {
+        final selectedId = controller.selectedCategoryId.value;
+        return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          itemCount: controller.categories.length,
-          separatorBuilder: (_, _) => const SizedBox(width: 8),
-          itemBuilder: (_, i) {
-            final c = controller.categories[i];
-            final sel = controller.selectedCategoryId.value == c.id;
-            return FilterChip(
-              selected: sel,
-              label: Text(
-                c.nameEn,
-                style: const TextStyle(fontSize: 12),
-              ),
-              onSelected: (_) => controller.selectCategory(c.id),
-            );
-          },
-        ),
-      ),
+          child: Row(
+            children: [
+              for (final c in controller.categories) ...[
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: FilterChip(
+                    key: ValueKey(c.id),
+                    selected: selectedId == c.id,
+                    showCheckmark: false,
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    label: Text(
+                      c.nameEn,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    onSelected: (_) => controller.selectCategory(c.id),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      }),
     );
   }
 }
