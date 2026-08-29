@@ -24,7 +24,11 @@ class UserMobileCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                AvatarCircle(name: u.name, size: 42),
+                AvatarCircle(
+                  name: u.name,
+                  url: u.photoUrl,
+                  size: 42,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(

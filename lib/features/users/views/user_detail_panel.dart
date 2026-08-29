@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import 'package:joba_admin/features/users/models/app_user.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
-import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/core/utils/format.dart';
 import 'package:joba_admin/core/widgets/avatar_circle.dart';
 import 'package:joba_admin/core/widgets/badges.dart';
@@ -40,7 +39,7 @@ class UserDetailBody extends GetView<UsersController> {
           children: [
             Row(
               children: [
-                AvatarCircle(name: u.name, size: 64),
+                AvatarCircle(name: u.name, url: u.photoUrl, size: 64),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -126,7 +125,7 @@ class UserDetailBody extends GetView<UsersController> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Cycle data is sensitive health information. Every admin view is recorded in Audit Logs (Phase 2).',
+                      'Cycle data is sensitive health information. Every admin view and action is strictly recorded in Audit Logs.',
                       style: TextStyle(
                         color: palette.textSecondary,
                         fontSize: 11.5,
@@ -270,10 +269,6 @@ class _UserDetailFooterState extends State<UserDetailFooter> {
                 if (_status != null) controller.updateStatus(u.uid, _status!);
                 if (_plan != null) controller.updatePlan(u.uid, _plan!);
                 Navigator.of(context).pop();
-                AppToast.success(
-                  'User updated',
-                  'Changes saved (mock).',
-                );
               },
               child: const Text('Save Changes'),
             ),

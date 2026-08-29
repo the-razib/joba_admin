@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/features/users/models/app_user.dart';
 import 'package:joba_admin/core/repositories/user_repository.dart';
 
@@ -10,6 +11,7 @@ class UsersController extends GetxController {
   final all = <AppUser>[].obs;
 
   final searchController = TextEditingController();
+  final searchTick = 0.obs;
   final statusFilter = 'All Status'.obs;
   final planFilter = 'All Plans'.obs;
   final countryFilter = 'All Countries'.obs;
@@ -20,14 +22,23 @@ class UsersController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    searchController.addListener(() => page.value = 1);
-    _load();
+    searchController.addListener(() {
+      searchTick.value++;
+      page.value = 1;
+    });
+    loadUsers();
   }
 
-  Future<void> _load() async {
+  Future<void> loadUsers() async {
     loading.value = true;
-    all.assignAll(await repo.seedUsers());
-    loading.value = false;
+    try {
+      final list = await repo.fetchUsers();
+      all.assignAll(list);
+    } catch (e) {
+      AppToast.error('Load Failed', 'Could not load users: $e');
+    } finally {
+      loading.value = false;
+    }
   }
 
   @override
@@ -37,6 +48,7 @@ class UsersController extends GetxController {
   }
 
   List<AppUser> get filtered {
+    searchTick.value;
     var list = all.toList();
     final q = searchController.text.trim().toLowerCase();
     if (q.isNotEmpty) {
@@ -87,7 +99,8 @@ class UsersController extends GetxController {
       (filtered.length / pageSize.value).ceil().clamp(1, 99999);
 
   List<String> get countries =>
-      all.map((u) => u.country).toSet().toList()..sort();
+      all.map((u) => u.country).where((c) => c.isNotEmpty).toSet().toList()
+        ..sort();
 
   void clearFilters() {
     searchController.clear();
@@ -99,15 +112,50 @@ class UsersController extends GetxController {
 
   void toggleSort() => sortAsc.value = !sortAsc.value;
 
-  void updateStatus(String uid, UserStatus status) {
+  Future<void> updateStatus(String uid, UserStatus status) async {
     final i = all.indexWhere((u) => u.uid == uid);
-    if (i >= 0) all[i] = all[i].copyWith(status: status);
+    if (i >= 0) {
+      final old = all[i];
+      all[i] = old.copyWith(status: status);
+      try {
+        await repo.updateUserStatus(uid, status);
+        AppToast.success('Status Updated', 'User marked as ${status.label}.');
+      } catch (e) {
+        all[i] = old;
+        AppToast.error('Update Failed', 'Could not update status: $e');
+      }
+    }
   }
 
-  void updatePlan(String uid, UserPlan plan) {
+  Future<void> updatePlan(String uid, UserPlan plan) async {
     final i = all.indexWhere((u) => u.uid == uid);
-    if (i >= 0) all[i] = all[i].copyWith(plan: plan);
+    if (i >= 0) {
+      final old = all[i];
+      all[i] = old.copyWith(plan: plan);
+      try {
+        await repo.updateUserPlan(uid, plan);
+        AppToast.success(
+          'Plan Updated',
+          'User upgraded/downgraded to ${plan.label}.',
+        );
+      } catch (e) {
+        all[i] = old;
+        AppToast.error('Update Failed', 'Could not update plan: $e');
+      }
+    }
   }
 
-  void remove(String uid) => all.removeWhere((u) => u.uid == uid);
+  Future<void> remove(String uid) async {
+    final i = all.indexWhere((u) => u.uid == uid);
+    if (i >= 0) {
+      final removed = all.removeAt(i);
+      try {
+        await repo.deleteUser(uid);
+        AppToast.success('User Deleted', 'User removed successfully.');
+      } catch (e) {
+        all.insert(i, removed);
+        AppToast.error('Delete Failed', 'Could not delete user: $e');
+      }
+    }
+  }
 }

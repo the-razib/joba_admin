@@ -67,33 +67,46 @@ class AppUser {
 
   String get flagEmoji {
     final runes = countryCode.toUpperCase().runes;
-    if (runes.length != 2) return 'ðŸŒ';
+    if (runes.length != 2) return '🌐';
     const base = 0x1F1E6; // regional indicator A
     return String.fromCharCode(base + runes.first - 65) +
         String.fromCharCode(base + runes.last - 65);
   }
 
   AppUser copyWith({
+    String? name,
+    String? email,
+    String? photoUrl,
     UserStatus? status,
     UserPlan? plan,
+    String? country,
+    String? countryCode,
+    DateTime? joinedAt,
+    DateTime? lastActive,
+    String? language,
+    int? averageCycleLength,
+    int? averagePeriodDuration,
+    String? cycleGoal,
+    int? birthYear,
     List<ReminderKind>? reminders,
   }) =>
       AppUser(
         uid: uid,
-        name: name,
-        email: email,
-        photoUrl: photoUrl,
+        name: name ?? this.name,
+        email: email ?? this.email,
+        photoUrl: photoUrl ?? this.photoUrl,
         status: status ?? this.status,
         plan: plan ?? this.plan,
-        country: country,
-        countryCode: countryCode,
-        joinedAt: joinedAt,
-        lastActive: lastActive,
-        language: language,
-        averageCycleLength: averageCycleLength,
-        averagePeriodDuration: averagePeriodDuration,
-        cycleGoal: cycleGoal,
-        birthYear: birthYear,
+        country: country ?? this.country,
+        countryCode: countryCode ?? this.countryCode,
+        joinedAt: joinedAt ?? this.joinedAt,
+        lastActive: lastActive ?? this.lastActive,
+        language: language ?? this.language,
+        averageCycleLength: averageCycleLength ?? this.averageCycleLength,
+        averagePeriodDuration:
+            averagePeriodDuration ?? this.averagePeriodDuration,
+        cycleGoal: cycleGoal ?? this.cycleGoal,
+        birthYear: birthYear ?? this.birthYear,
         reminders: reminders ?? this.reminders,
       );
 
@@ -101,6 +114,7 @@ class AppUser {
     return {
       'uid': uid,
       'name': name,
+      'displayName': name,
       'email': email,
       if (photoUrl != null) 'photoUrl': photoUrl,
       'status': status.name,
@@ -108,7 +122,9 @@ class AppUser {
       'country': country,
       'countryCode': countryCode,
       'joinedAt': Timestamp.fromDate(joinedAt),
+      'createdAt': Timestamp.fromDate(joinedAt),
       'lastActive': Timestamp.fromDate(lastActive),
+      'lastSeenAt': Timestamp.fromDate(lastActive),
       'language': language,
       'averageCycleLength': averageCycleLength,
       'averagePeriodDuration': averagePeriodDuration,
@@ -126,11 +142,25 @@ class AppUser {
       return DateTime.now();
     }
 
-    final statusStr = map['status']?.toString().toLowerCase() ?? 'active';
-    final userStatus = UserStatus.values.firstWhere(
-      (s) => s.name == statusStr,
-      orElse: () => UserStatus.active,
+    final lastActiveDate = parseDate(
+      map['lastActive'] ?? map['lastSeenAt'] ?? map['updatedAt'],
     );
+
+    final statusStr = map['status']?.toString().toLowerCase();
+    UserStatus userStatus;
+    if (statusStr == 'blocked') {
+      userStatus = UserStatus.blocked;
+    } else if (statusStr == 'inactive') {
+      userStatus = UserStatus.inactive;
+    } else {
+      // Automatic Inactivity: 30 days without opening the app (1 full cycle)
+      final diff = DateTime.now().difference(lastActiveDate);
+      if (diff.inDays >= 30) {
+        userStatus = UserStatus.inactive;
+      } else {
+        userStatus = UserStatus.active;
+      }
+    }
 
     final planStr = map['plan']?.toString().toLowerCase() ?? 'free';
     final userPlan = UserPlan.values.firstWhere(
@@ -149,20 +179,36 @@ class AppUser {
       }
     }
 
+    final countryCode = map['countryCode']?.toString().toUpperCase() ?? 'BD';
+    final countryName = map['country']?.toString() ?? 'Bangladesh';
+
+    final customName = map['customDisplayName']?.toString();
+    final displayName = map['displayName']?.toString();
+    final plainName = map['name']?.toString();
+
+    final resolvedName = (customName != null && customName.isNotEmpty)
+        ? customName
+        : (displayName != null && displayName.isNotEmpty)
+            ? displayName
+            : (plainName != null && plainName.isNotEmpty)
+                ? plainName
+                : 'User';
+
     return AppUser(
       uid: docId ?? map['uid']?.toString() ?? '',
-      name: map['name']?.toString() ?? map['displayName']?.toString() ?? 'User',
+      name: resolvedName,
       email: map['email']?.toString() ?? '',
       photoUrl: map['photoUrl']?.toString() ?? map['photoURL']?.toString(),
       status: userStatus,
       plan: userPlan,
-      country: map['country']?.toString() ?? 'Bangladesh',
-      countryCode: map['countryCode']?.toString() ?? 'BD',
+      country: countryName,
+      countryCode: countryCode,
       joinedAt: parseDate(map['joinedAt'] ?? map['createdAt']),
-      lastActive: parseDate(map['lastActive'] ?? map['updatedAt']),
+      lastActive: lastActiveDate,
       language: map['language']?.toString() ?? 'bn',
       averageCycleLength: (map['averageCycleLength'] as num?)?.toInt() ?? 28,
-      averagePeriodDuration: (map['averagePeriodDuration'] as num?)?.toInt() ?? 5,
+      averagePeriodDuration:
+          (map['averagePeriodDuration'] as num?)?.toInt() ?? 5,
       cycleGoal: map['cycleGoal']?.toString() ?? 'track',
       birthYear: (map['birthYear'] as num?)?.toInt(),
       reminders: remindersList,

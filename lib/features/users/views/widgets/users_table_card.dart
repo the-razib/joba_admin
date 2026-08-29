@@ -37,7 +37,11 @@ class UsersTableCard extends GetView<UsersController> {
                     flex: 4,
                     build: (context, u) => Row(
                       children: [
-                        AvatarCircle(name: u.name, size: 38),
+                        AvatarCircle(
+                          name: u.name,
+                          url: u.photoUrl,
+                          size: 38,
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Column(
