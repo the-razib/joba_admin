@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:joba_admin/core/repositories/article_repository.dart';
 import 'package:joba_admin/core/repositories/audit_log_repository.dart';
 import 'package:joba_admin/core/repositories/avatar_repository.dart';
+import 'package:joba_admin/core/repositories/firebase_avatar_repository.dart';
 import 'package:joba_admin/core/repositories/push_repository.dart';
 import 'package:joba_admin/core/repositories/report_repository.dart';
 import 'package:joba_admin/core/repositories/screener_repository.dart';
@@ -97,17 +98,19 @@ class _AppBindings extends Bindings {
     Get.lazyPut(() => StorageService());
     Get.lazyPut(() => FunctionsService());
 
-    // Flag to force mock implementations during development/testing
-    const bool useMocks = bool.fromEnvironment('USE_MOCKS', defaultValue: true);
+    // Flag to force mock implementations during development/testing or headless tests
+    final bool hasFirebase = Firebase.apps.isNotEmpty;
+    const bool useMocks = bool.fromEnvironment('USE_MOCKS', defaultValue: false);
+    final bool enableMocks = useMocks || !hasFirebase;
 
-    Get.lazyPut<UserRepository>(() => useMocks ? MockUserRepository() : MockUserRepository());
-    Get.lazyPut<ArticleRepository>(() => useMocks ? MockArticleRepository() : MockArticleRepository());
-    Get.lazyPut<AvatarRepository>(() => useMocks ? MockAvatarRepository() : MockAvatarRepository());
-    Get.lazyPut<ReportRepository>(() => useMocks ? MockReportRepository() : MockReportRepository());
-    Get.lazyPut<AuditLogRepository>(() => useMocks ? MockAuditLogRepository() : MockAuditLogRepository());
-    Get.lazyPut<UsageRepository>(() => useMocks ? MockUsageRepository() : MockUsageRepository());
-    Get.lazyPut<PushRepository>(() => useMocks ? MockPushRepository() : MockPushRepository());
-    Get.lazyPut<ScreenerRepository>(() => useMocks ? MockScreenerRepository() : MockScreenerRepository());
+    Get.lazyPut<UserRepository>(() => enableMocks ? MockUserRepository() : MockUserRepository());
+    Get.lazyPut<ArticleRepository>(() => enableMocks ? MockArticleRepository() : MockArticleRepository());
+    Get.lazyPut<AvatarRepository>(() => enableMocks ? MockAvatarRepository() : FirebaseAvatarRepository());
+    Get.lazyPut<ReportRepository>(() => enableMocks ? MockReportRepository() : MockReportRepository());
+    Get.lazyPut<AuditLogRepository>(() => enableMocks ? MockAuditLogRepository() : MockAuditLogRepository());
+    Get.lazyPut<UsageRepository>(() => enableMocks ? MockUsageRepository() : MockUsageRepository());
+    Get.lazyPut<PushRepository>(() => enableMocks ? MockPushRepository() : MockPushRepository());
+    Get.lazyPut<ScreenerRepository>(() => enableMocks ? MockScreenerRepository() : MockScreenerRepository());
 
     Get.lazyPut(() => ShellController());
     Get.lazyPut(() => AuthController());

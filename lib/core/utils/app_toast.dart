@@ -32,6 +32,9 @@ class AppToast {
     ToastType type = ToastType.info,
     Duration duration = const Duration(milliseconds: 3500),
   }) {
+    if (Get.testMode && (Get.key.currentState == null || Get.key.currentState?.overlay == null)) {
+      return;
+    }
     final context = Get.context;
     final isDark = context != null ? Theme.of(context).brightness == Brightness.dark : true;
     final palette = isDark ? AppPalette.dark : AppPalette.light;

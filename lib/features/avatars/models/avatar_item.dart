@@ -66,6 +66,11 @@ class AvatarItem {
   String get rawName =>
       id.replaceAll(RegExp(r'\.(png|jpg|jpeg|webp)$'), '');
 
+  String get bundledAssetPath {
+    final filename = id.endsWith('.png') ? id : '$id.png';
+    return 'assets/images/profile_avatars/$categoryId/$filename';
+  }
+
   AvatarItem copyWith({bool? active, int? order}) => AvatarItem(
         id: id,
         categoryId: categoryId,
@@ -87,10 +92,21 @@ class AvatarItem {
   }
 
   factory AvatarItem.fromMap(Map<String, dynamic> map, {String? docId}) {
+    final docIdStr = docId ?? map['id']?.toString() ?? '';
+    final category = map['categoryId']?.toString() ?? 'modern';
+    final rawAsset = map['assetPath']?.toString();
+    final rawImage = map['imageUrl']?.toString();
+
+    final finalPath = (rawImage != null && rawImage.isNotEmpty)
+        ? rawImage
+        : (rawAsset != null && rawAsset.isNotEmpty)
+            ? rawAsset
+            : 'assets/images/profile_avatars/$category/${docIdStr.endsWith('.png') ? docIdStr : '$docIdStr.png'}';
+
     return AvatarItem(
-      id: docId ?? map['id']?.toString() ?? '',
-      categoryId: map['categoryId']?.toString() ?? 'modern',
-      assetPath: map['imageUrl']?.toString() ?? map['assetPath']?.toString() ?? '',
+      id: docIdStr,
+      categoryId: category,
+      assetPath: finalPath,
       order: (map['order'] as num?)?.toInt() ?? 0,
       active: map['active'] as bool? ?? true,
     );

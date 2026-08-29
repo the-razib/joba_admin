@@ -28,6 +28,7 @@ class AvatarItemCard extends GetView<AvatarsController> {
               child: AvatarCircle(
                 name: a.rawName,
                 assetPath: a.assetPath.isEmpty ? null : a.assetPath,
+                fallbackAssetPath: a.bundledAssetPath,
                 bytes: a.pendingBytes,
                 size: 74,
               ),
