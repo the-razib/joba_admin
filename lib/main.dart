@@ -29,6 +29,7 @@ import 'package:joba_admin/features/usage/controllers/usage_controller.dart';
 import 'package:joba_admin/features/users/controllers/users_controller.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:joba_admin/core/services/firestore_service.dart';
+import 'package:joba_admin/core/services/functions_service.dart';
 import 'package:joba_admin/core/services/storage_service.dart';
 import 'package:joba_admin/core/widgets/firebase_bootstrap_error_app.dart';
 import 'package:joba_admin/firebase_options.dart';
@@ -94,6 +95,7 @@ class _AppBindings extends Bindings {
   void dependencies() {
     // Services
     Get.lazyPut(() => StorageService());
+    Get.lazyPut(() => FunctionsService());
 
     // Flag to force mock implementations during development/testing
     const bool useMocks = bool.fromEnvironment('USE_MOCKS', defaultValue: true);
