@@ -11,6 +11,8 @@ class CycleDataController extends GetxController {
   final searchController = TextEditingController();
   final searchTick = 0.obs;
 
+  int get sampleSize => users.length;
+
   @override
   void onInit() {
     super.onInit();
@@ -19,8 +21,18 @@ class CycleDataController extends GetxController {
 
   Future<void> _load() async {
     loading.value = true;
-    users.assignAll(await repo.seedUsers());
-    loading.value = false;
+    try {
+      final list = await repo.fetchUsers();
+      users.assignAll(list);
+    } catch (e) {
+      debugPrint('Error loading cycle users: $e');
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  Future<void> refreshData() async {
+    await _load();
   }
 
   @override

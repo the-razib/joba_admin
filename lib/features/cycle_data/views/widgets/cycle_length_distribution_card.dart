@@ -23,6 +23,40 @@ class CycleLengthDistributionCard extends GetView<CycleDataController> {
           child: BarChart(
             BarChartData(
               maxY: max.toDouble() + 2,
+              barTouchData: BarTouchData(
+                enabled: true,
+                touchTooltipData: BarTouchTooltipData(
+                  getTooltipColor: (_) => const Color(0xFF1E293B),
+                  tooltipRoundedRadius: 8,
+                  tooltipPadding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  tooltipMargin: 8,
+                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    final label = group.x >= 0 && group.x < buckets.length
+                        ? buckets[group.x].$1
+                        : '';
+                    final count = rod.toY.toInt();
+                    return BarTooltipItem(
+                      '$count users\n',
+                      const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: label,
+                          style: const TextStyle(
+                            color: Color(0xFF94A3B8),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
               barGroups: [
                 for (var i = 0; i < buckets.length; i++)
                   BarChartGroupData(

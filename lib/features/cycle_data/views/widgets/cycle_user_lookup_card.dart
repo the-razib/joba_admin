@@ -30,6 +30,21 @@ class CycleUserLookupCard extends GetView<CycleDataController> {
             controller.searchTick.value;
             final list = controller.lookup;
 
+            if (list.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: Text(
+                    'No users found matching search query.',
+                    style: TextStyle(
+                      color: context.palette.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              );
+            }
+
             return Column(
               children: [
                 for (final u in list)
@@ -43,7 +58,11 @@ class CycleUserLookupCard extends GetView<CycleDataController> {
                       ),
                       child: Row(
                         children: [
-                          AvatarCircle(name: u.name, size: 38),
+                          AvatarCircle(
+                            name: u.name,
+                            url: u.photoUrl,
+                            size: 38,
+                          ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(

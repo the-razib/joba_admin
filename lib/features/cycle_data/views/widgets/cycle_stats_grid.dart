@@ -17,17 +17,17 @@ class CycleStatsGrid extends GetView<CycleDataController> {
         (
           Icons.sync_alt,
           'Avg. Cycle Length',
-          controller.avgCycle.toStringAsFixed(1),
+          '${controller.avgCycle.toStringAsFixed(1)}d',
           null,
-          'days across users',
+          'Sample n = ${controller.sampleSize}',
           AppColors.primary,
         ),
         (
           Icons.water_drop_outlined,
           'Avg. Period Duration',
-          controller.avgPeriod.toStringAsFixed(1),
+          '${controller.avgPeriod.toStringAsFixed(1)}d',
           null,
-          'days',
+          'Sample n = ${controller.sampleSize}',
           AppColors.accent,
         ),
         (

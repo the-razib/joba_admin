@@ -105,6 +105,11 @@ class ActivityLineChart extends StatelessWidget {
           ),
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
+              getTooltipColor: (_) => const Color(0xFF1E293B),
+              tooltipRoundedRadius: 8,
+              tooltipPadding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              tooltipMargin: 8,
               getTooltipItems: (spots) => spots.map((s) {
                 final i = s.x.toInt();
                 final label = i < labels.length ? labels[i] : '';
@@ -112,15 +117,24 @@ class ActivityLineChart extends StatelessWidget {
                     ? tooltipFormatter!(s.y)
                     : '${compactNumber(s.y)} users';
                 return LineTooltipItem(
-                  '$label\n$value',
+                  '$value\n',
                   const TextStyle(
                     color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
                   ),
+                  children: [
+                    TextSpan(
+                      text: label,
+                      style: const TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 );
               }).toList(),
-              tooltipRoundedRadius: 8,
             ),
           ),
           lineBarsData: [
