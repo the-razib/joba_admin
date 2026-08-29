@@ -8,7 +8,11 @@ import 'package:joba_admin/routes/app_routes.dart';
 class AuthGuard extends GetMiddleware {
   @override
   RouteSettings? redirect(String? route) {
-    return Get.find<AuthService>().user.value == null
+    final auth = Get.find<AuthService>();
+    if (auth.initializing.value) {
+      return null;
+    }
+    return auth.user.value == null
         ? const RouteSettings(name: AppRoutes.login)
         : null;
   }

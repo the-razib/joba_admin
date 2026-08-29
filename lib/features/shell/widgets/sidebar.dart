@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/widgets/app_logo.dart';
+import 'package:joba_admin/features/admin_management/models/admin_user.dart';
 import 'package:joba_admin/features/shell/nav_items.dart';
 import 'package:joba_admin/features/shell/shell_controller.dart';
 
@@ -77,30 +79,52 @@ class Sidebar extends GetView<ShellController> {
     );
   }
 
+  List<NavItem> _visibleNavItems() {
+    final auth = Get.find<AuthService>();
+    final role = auth.user.value?.role ?? AdminRole.viewer;
+    return navItems.where((item) {
+      if (role == AdminRole.viewer) {
+        if (item.administration || item.id == NavId.settings) {
+          return false;
+        }
+      } else if (role == AdminRole.editor) {
+        if (item.id == NavId.admins || item.id == NavId.settings) {
+          return false;
+        }
+      }
+      return true;
+    }).toList();
+  }
+
   Widget _navList() {
-    return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-      children: [
-        for (final item in navItems) ...[
-          if (!rail &&
-              item.administration &&
-              item == navItems.firstWhere((n) => n.administration))
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 16, 8, 8),
-              child: Text(
-                'ADMINISTRATION',
-                style: TextStyle(
-                  color: AppColors.sidebarText.withValues(alpha: 0.65),
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.2,
+    return Obx(() {
+      final items = _visibleNavItems();
+      final hasAdminItems = items.any((n) => n.administration);
+      final firstAdminItem =
+          hasAdminItems ? items.firstWhere((n) => n.administration) : null;
+
+      return ListView(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+        children: [
+          for (final item in items) ...[
+            if (!rail && item.administration && item == firstAdminItem)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 16, 8, 8),
+                child: Text(
+                  'ADMINISTRATION',
+                  style: TextStyle(
+                    color: AppColors.sidebarText.withValues(alpha: 0.65),
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                  ),
                 ),
               ),
-            ),
-          Obx(() => _tile(item)),
+            _tile(item),
+          ],
         ],
-      ],
-    );
+      );
+    });
   }
 
   Widget _tile(NavItem item) {

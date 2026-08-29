@@ -29,6 +29,7 @@ import 'package:joba_admin/features/usage/controllers/usage_controller.dart';
 import 'package:joba_admin/features/users/controllers/users_controller.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:joba_admin/core/services/firestore_service.dart';
+import 'package:joba_admin/core/widgets/firebase_bootstrap_error_app.dart';
 import 'package:joba_admin/firebase_options.dart';
 import 'package:joba_admin/routes/app_pages.dart';
 import 'package:joba_admin/routes/app_routes.dart';
@@ -51,85 +52,18 @@ Future<void> main() async {
   }
 
   if (!firebaseInitialized) {
-    runApp(FirebaseBootstrapErrorApp(error: initError));
+    runApp(
+      FirebaseBootstrapErrorApp(
+        error: initError,
+        onRetry: () => main(),
+      ),
+    );
     return;
   }
 
   Get.put(ThemeService());
   Get.put(AuthService());
   runApp(const JobaAdminApp());
-}
-
-/// Fallback error widget shown if Firebase fails to initialize
-class FirebaseBootstrapErrorApp extends StatelessWidget {
-  final String? error;
-  const FirebaseBootstrapErrorApp({super.key, this.error});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: const Color(0xFF0F172A),
-        body: Center(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 460),
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E293B),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF334155)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.error_outline_rounded,
-                  color: Color(0xFFEF4444),
-                  size: 48,
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Firebase Initialization Failed',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  error ?? 'Unable to connect to Firebase services.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFF94A3B8),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: () => main(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6366F1),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 14,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  icon: const Icon(Icons.refresh_rounded, size: 18),
-                  label: const Text('Retry Connection'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class JobaAdminApp extends StatelessWidget {

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
+import 'package:joba_admin/features/admin_management/models/admin_user.dart';
 import 'package:joba_admin/features/shell/nav_items.dart';
 import 'package:joba_admin/features/shell/shell_controller.dart';
 
@@ -47,6 +49,19 @@ class MobileBottomNav extends GetView<ShellController> {
   }
 
   void _showMore(BuildContext context) {
+    final auth = Get.find<AuthService>();
+    final role = auth.user.value?.role ?? AdminRole.viewer;
+    final otherItems = navItems.where((n) {
+      if (_primary.contains(n.id)) return false;
+      if (role == AdminRole.viewer && (n.administration || n.id == NavId.settings)) {
+        return false;
+      }
+      if (role == AdminRole.editor && (n.id == NavId.admins || n.id == NavId.settings)) {
+        return false;
+      }
+      return true;
+    }).toList();
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -61,7 +76,7 @@ class MobileBottomNav extends GetView<ShellController> {
             spacing: 12,
             runSpacing: 12,
             children: [
-              for (final item in navItems.where((n) => !_primary.contains(n.id)))
+              for (final item in otherItems)
                 ActionChip(
                   avatar: Icon(item.icon, size: 16, color: Colors.white),
                   label: Text(

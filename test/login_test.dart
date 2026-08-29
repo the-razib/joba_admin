@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:joba_admin/core/services/auth_service.dart';
+import 'package:joba_admin/core/theme/app_theme.dart';
+import 'package:joba_admin/features/admin_management/models/admin_user.dart';
 import 'package:joba_admin/features/auth/auth_controller.dart';
 import 'package:joba_admin/features/auth/login_screen.dart';
 
@@ -18,7 +20,10 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(const GetMaterialApp(home: LoginScreen()));
+    await tester.pumpWidget(GetMaterialApp(
+      theme: AppTheme.light(),
+      home: const LoginScreen(),
+    ));
     await tester.pump(const Duration(milliseconds: 200));
   }
 
@@ -42,10 +47,7 @@ void main() {
       expect(find.byType(Card), findsOneWidget);
       expect(find.text('Joba Admin'), findsOneWidget);
       expect(find.widgetWithText(ElevatedButton, 'Sign in'), findsOneWidget);
-      expect(
-        find.byType(ActionChip),
-        findsNWidgets(AuthService.demoAccounts.length),
-      );
+      expect(find.text('Authorized Personnel Only'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }
@@ -74,15 +76,36 @@ void main() {
     expect(controller.loading.value, isFalse);
   });
 
-  testWidgets('a demo chip fills in that role\'s credentials', (tester) async {
+  testWidgets('a password under 6 characters blocks submission', (tester) async {
     await pumpLogin(tester, const Size(1440, 900));
     final controller = Get.find<AuthController>();
-    final (email, password, role) = AuthService.demoAccounts.last;
+    controller.emailController.text = 'admin@joba.app';
+    controller.passwordController.text = '123';
 
-    await tester.tap(find.widgetWithText(ActionChip, role));
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Sign in'));
     await tester.pump();
 
-    expect(controller.emailController.text, email);
-    expect(controller.passwordController.text, password);
+    expect(find.text('Minimum 6 characters'), findsOneWidget);
+    expect(controller.loading.value, isFalse);
+  });
+
+  group('AdminRole.fromString parsing tests', () {
+    test('parses superAdmin variants correctly', () {
+      expect(AdminRole.fromString('superAdmin'), AdminRole.superAdmin);
+      expect(AdminRole.fromString('super_admin'), AdminRole.superAdmin);
+      expect(AdminRole.fromString('super admin'), AdminRole.superAdmin);
+      expect(AdminRole.fromString('SUPERADMIN'), AdminRole.superAdmin);
+    });
+
+    test('parses editor correctly', () {
+      expect(AdminRole.fromString('editor'), AdminRole.editor);
+      expect(AdminRole.fromString('EDITOR'), AdminRole.editor);
+    });
+
+    test('parses viewer or unknown/null to viewer fallback', () {
+      expect(AdminRole.fromString('viewer'), AdminRole.viewer);
+      expect(AdminRole.fromString(null), AdminRole.viewer);
+      expect(AdminRole.fromString('unknown_role'), AdminRole.viewer);
+    });
   });
 }

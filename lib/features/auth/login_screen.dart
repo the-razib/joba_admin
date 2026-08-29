@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/theme/responsive.dart';
@@ -25,24 +24,32 @@ class LoginScreen extends StatelessWidget {
           ),
         ),
         child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: isMobile ? 20 : 32,
-                vertical: 32,
-              ),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 410),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _BrandLockup(compact: isMobile),
-                    SizedBox(height: isMobile ? 24 : 28),
-                    const _LoginCard(),
-                  ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final horizontalPad = isMobile ? 20.0 : 32.0;
+              final maxAvailableWidth =
+                  (constraints.maxWidth - (horizontalPad * 2)).clamp(0.0, 410.0);
+
+              return Center(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: horizontalPad,
+                    vertical: 32,
+                  ),
+                  child: SizedBox(
+                    width: maxAvailableWidth,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _BrandLockup(compact: isMobile),
+                        SizedBox(height: isMobile ? 24 : 28),
+                        const _LoginCard(),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ),
       ),
@@ -157,37 +164,30 @@ class _LoginCard extends GetView<AuthController> {
                         : const Text('Sign in'),
                   ),
                 ),
-                const SizedBox(height: 22),
-                Row(
-                  children: [
-                    Expanded(child: Divider(color: palette.border, height: 1)),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: Text(
-                        'Demo accounts',
-                        style: TextStyle(
+                const SizedBox(height: 20),
+                Center(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.lock_outline_rounded,
+                          size: 14,
                           color: palette.textSecondary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
                         ),
-                      ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Authorized Personnel Only',
+                          style: TextStyle(
+                            color: palette.textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
-                    Expanded(child: Divider(color: palette.border, height: 1)),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final (email, password, role)
-                        in AuthService.demoAccounts)
-                      ActionChip(
-                        label: Text(role, style: const TextStyle(fontSize: 12)),
-                        onPressed: () => controller.fillDemo(email, password),
-                      ),
-                  ],
+                  ),
                 ),
               ],
             ),

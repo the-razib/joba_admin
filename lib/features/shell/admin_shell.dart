@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
+import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/responsive.dart';
 import 'package:joba_admin/features/admin_management/views/admin_management_screen.dart';
 import 'package:joba_admin/features/app_settings/views/settings_screen.dart';
@@ -20,19 +22,61 @@ import 'package:joba_admin/features/shell/widgets/sidebar.dart';
 import 'package:joba_admin/features/shell/widgets/top_bar.dart';
 import 'package:joba_admin/features/usage/views/usage_screen.dart';
 import 'package:joba_admin/features/users/views/users_screen.dart';
+import 'package:joba_admin/routes/app_routes.dart';
 
 class AdminShell extends GetView<ShellController> {
   const AdminShell({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final auth = Get.find<AuthService>();
     final mobile = Responsive.isMobile(context);
-    return Scaffold(
-      key: controller.scaffoldKey,
-      drawer: mobile ? const Drawer(width: 280, child: Sidebar()) : null,
-      body: mobile ? _mobileBody() : _desktopBody(context),
-      bottomNavigationBar: mobile ? const MobileBottomNav() : null,
-    );
+
+    return Obx(() {
+      if (auth.initializing.value) {
+        return const Scaffold(
+          backgroundColor: AppColors.backgroundDark,
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: AppColors.primary,
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Verifying session...',
+                  style: TextStyle(
+                    color: AppColors.sidebarText,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      if (auth.user.value == null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Get.offAllNamed(AppRoutes.login);
+        });
+        return const SizedBox.shrink();
+      }
+
+      return Scaffold(
+        key: controller.scaffoldKey,
+        drawer: mobile ? const Drawer(width: 280, child: Sidebar()) : null,
+        body: mobile ? _mobileBody() : _desktopBody(context),
+        bottomNavigationBar: mobile ? const MobileBottomNav() : null,
+      );
+    });
   }
 
   Widget _mobileBody() {

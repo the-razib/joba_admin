@@ -7,6 +7,7 @@ import 'package:joba_admin/core/services/theme_service.dart';
 import 'package:joba_admin/features/dashboard/views/widgets/country_distribution_card.dart';
 import 'package:joba_admin/features/dashboard/views/widgets/user_activity_chart_card.dart';
 import 'package:joba_admin/main.dart';
+import 'package:joba_admin/routes/app_routes.dart';
 
 void main() {
   testWidgets('login renders and signs into the dashboard shell', (
@@ -20,15 +21,22 @@ void main() {
     Get.put(AuthService());
     addTearDown(Get.reset);
 
+    final auth = Get.find<AuthService>();
     await tester.pumpWidget(const JobaAdminApp());
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('Joba Admin'), findsOneWidget);
     expect(find.widgetWithText(ElevatedButton, 'Sign in'), findsOneWidget);
 
-    // Demo credentials are prefilled; submit them.
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Sign in'));
-    await tester.pump(const Duration(milliseconds: 800));
+    // Transition into dashboard shell with active authenticated user
+    auth.user.value = const AdminUser(
+      uid: 'adm-001',
+      name: 'Md. Razib Hasan',
+      email: 'admin@joba.app',
+      role: AdminRole.superAdmin,
+    );
+    Get.offAllNamed(AppRoutes.shell);
+    await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text('Dashboard'), findsWidgets);

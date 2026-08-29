@@ -8,30 +8,30 @@ class AuthController extends GetxController {
   final AuthService auth = Get.find();
 
   final formKey = GlobalKey<FormState>();
-  final emailController = TextEditingController(text: 'admin@joba.app');
-  final passwordController = TextEditingController(text: 'admin123');
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
   final loading = false.obs;
   final obscure = true.obs;
 
   Future<void> submit() async {
     if (!(formKey.currentState?.validate() ?? false)) return;
     loading.value = true;
-    final ok = await auth.login(
+    final result = await auth.login(
       emailController.text,
       passwordController.text,
     );
     loading.value = false;
-    if (ok) {
+    if (result.isSuccess) {
       Get.offAllNamed(AppRoutes.shell);
     } else {
       AppToast.error(
-        'Login failed',
-        'Invalid email or password. Try a demo account below.',
+        'Login Failed',
+        result.errorMessage ?? 'Invalid email or password.',
       );
     }
   }
 
-  void fillDemo(String email, String password) {
+  void fillCredentials(String email, String password) {
     emailController.text = email;
     passwordController.text = password;
   }
