@@ -4,6 +4,10 @@ import 'package:joba_admin/features/reports/models/report.dart';
 /// written by the app's Report Problem screen.
 abstract class ReportRepository {
   Future<List<Report>> seedReports();
+  Future<List<Report>> fetchReports({int limit = 50});
+  Future<void> updateReportStatus(String id, ReportStatus status);
+  Future<void> updateReportPriority(String id, ReportPriority priority);
+  Future<void> deleteReport(String id);
 }
 
 class MockReportRepository implements ReportRepository {
@@ -21,4 +25,16 @@ class MockReportRepository implements ReportRepository {
       Report(id: 'RP-006', type: ReportType.payment, subject: 'Payment failed but amount deducted', description: 'Payment was failed but money is deducted from my bKash account.', userName: 'Riya Dey', userEmail: 'riya@gmail.com', status: ReportStatus.inProgress, priority: ReportPriority.high, date: d(4, 16), deviceModel: 'Realme 9', os: 'Android 12'),
     ];
   }
+
+  @override
+  Future<List<Report>> fetchReports({int limit = 50}) async => seedReports();
+
+  @override
+  Future<void> updateReportStatus(String id, ReportStatus status) async {}
+
+  @override
+  Future<void> updateReportPriority(String id, ReportPriority priority) async {}
+
+  @override
+  Future<void> deleteReport(String id) async {}
 }

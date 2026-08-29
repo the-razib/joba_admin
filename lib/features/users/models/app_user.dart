@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:get/get.dart';
 import 'package:joba_admin/features/reminders/models/reminder_template.dart';
 
 enum UserStatus {
@@ -94,4 +96,76 @@ class AppUser {
         birthYear: birthYear,
         reminders: reminders ?? this.reminders,
       );
+
+  Map<String, dynamic> toMap() {
+    return {
+      'uid': uid,
+      'name': name,
+      'email': email,
+      if (photoUrl != null) 'photoUrl': photoUrl,
+      'status': status.name,
+      'plan': plan.name,
+      'country': country,
+      'countryCode': countryCode,
+      'joinedAt': Timestamp.fromDate(joinedAt),
+      'lastActive': Timestamp.fromDate(lastActive),
+      'language': language,
+      'averageCycleLength': averageCycleLength,
+      'averagePeriodDuration': averagePeriodDuration,
+      'cycleGoal': cycleGoal,
+      if (birthYear != null) 'birthYear': birthYear,
+      'reminders': reminders.map((r) => r.name).toList(),
+    };
+  }
+
+  factory AppUser.fromMap(Map<String, dynamic> map, {String? docId}) {
+    DateTime parseDate(dynamic val) {
+      if (val is Timestamp) return val.toDate();
+      if (val is DateTime) return val;
+      if (val is String) return DateTime.tryParse(val) ?? DateTime.now();
+      return DateTime.now();
+    }
+
+    final statusStr = map['status']?.toString().toLowerCase() ?? 'active';
+    final userStatus = UserStatus.values.firstWhere(
+      (s) => s.name == statusStr,
+      orElse: () => UserStatus.active,
+    );
+
+    final planStr = map['plan']?.toString().toLowerCase() ?? 'free';
+    final userPlan = UserPlan.values.firstWhere(
+      (p) => p.name == planStr,
+      orElse: () => UserPlan.free,
+    );
+
+    final remindersRaw = map['reminders'];
+    final remindersList = <ReminderKind>[];
+    if (remindersRaw is List) {
+      for (final item in remindersRaw) {
+        final kind = ReminderKind.values.firstWhereOrNull(
+          (k) => k.name == item?.toString(),
+        );
+        if (kind != null) remindersList.add(kind);
+      }
+    }
+
+    return AppUser(
+      uid: docId ?? map['uid']?.toString() ?? '',
+      name: map['name']?.toString() ?? map['displayName']?.toString() ?? 'User',
+      email: map['email']?.toString() ?? '',
+      photoUrl: map['photoUrl']?.toString() ?? map['photoURL']?.toString(),
+      status: userStatus,
+      plan: userPlan,
+      country: map['country']?.toString() ?? 'Bangladesh',
+      countryCode: map['countryCode']?.toString() ?? 'BD',
+      joinedAt: parseDate(map['joinedAt'] ?? map['createdAt']),
+      lastActive: parseDate(map['lastActive'] ?? map['updatedAt']),
+      language: map['language']?.toString() ?? 'bn',
+      averageCycleLength: (map['averageCycleLength'] as num?)?.toInt() ?? 28,
+      averagePeriodDuration: (map['averagePeriodDuration'] as num?)?.toInt() ?? 5,
+      cycleGoal: map['cycleGoal']?.toString() ?? 'track',
+      birthYear: (map['birthYear'] as num?)?.toInt(),
+      reminders: remindersList,
+    );
+  }
 }

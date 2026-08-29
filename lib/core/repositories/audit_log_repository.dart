@@ -4,6 +4,8 @@ import 'package:joba_admin/features/audit_logs/models/audit_log.dart';
 /// `audit_logs` (written by cloud function).
 abstract class AuditLogRepository {
   Future<List<AuditLog>> seedLogs();
+  Future<List<AuditLog>> fetchLogs({int limit = 50});
+  Future<void> recordLog(AuditLog log);
 }
 
 class MockAuditLogRepository implements AuditLogRepository {
@@ -28,4 +30,10 @@ class MockAuditLogRepository implements AuditLogRepository {
       AuditLog(id: 'AL-014', time: t(52), adminName: 'Moumita Rahi', adminRole: 'Viewer', action: AuditAction.viewed, module: 'Users', details: 'Viewed user profile USR-10432', ip: '103.145.12.64', location: 'Bangladesh, Sylhet'),
     ];
   }
+
+  @override
+  Future<List<AuditLog>> fetchLogs({int limit = 50}) async => seedLogs();
+
+  @override
+  Future<void> recordLog(AuditLog log) async {}
 }

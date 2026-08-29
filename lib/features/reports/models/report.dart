@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 
@@ -114,4 +115,62 @@ class Report {
         deviceModel: deviceModel,
         os: os,
       );
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'type': type.name,
+      'subject': subject,
+      'description': description,
+      'userName': userName,
+      'userEmail': userEmail,
+      'status': status.name,
+      'priority': priority.name,
+      'date': Timestamp.fromDate(date),
+      'createdAt': Timestamp.fromDate(date),
+      if (deviceModel != null) 'deviceModel': deviceModel,
+      if (os != null) 'os': os,
+    };
+  }
+
+  factory Report.fromMap(Map<String, dynamic> map, {String? docId}) {
+    DateTime parseDate(dynamic val) {
+      if (val is Timestamp) return val.toDate();
+      if (val is DateTime) return val;
+      if (val is String) return DateTime.tryParse(val) ?? DateTime.now();
+      return DateTime.now();
+    }
+
+    final typeStr = map['type']?.toString().toLowerCase() ?? 'other';
+    final reportType = ReportType.values.firstWhere(
+      (t) => t.name.toLowerCase() == typeStr,
+      orElse: () => ReportType.other,
+    );
+
+    final statusStr = map['status']?.toString().toLowerCase() ?? 'pending';
+    final reportStatus = ReportStatus.values.firstWhere(
+      (s) => s.name.toLowerCase() == statusStr,
+      orElse: () => ReportStatus.pending,
+    );
+
+    final prioStr = map['priority']?.toString().toLowerCase() ?? 'medium';
+    final reportPriority = ReportPriority.values.firstWhere(
+      (p) => p.name.toLowerCase() == prioStr,
+      orElse: () => ReportPriority.medium,
+    );
+
+    return Report(
+      id: docId ?? map['id']?.toString() ?? '',
+      type: reportType,
+      subject: map['subject']?.toString() ?? '',
+      description: map['description']?.toString() ?? '',
+      userName: map['userName']?.toString() ?? 'Anonymous',
+      userEmail: map['userEmail']?.toString() ?? '',
+      status: reportStatus,
+      priority: reportPriority,
+      date: parseDate(map['date'] ?? map['createdAt']),
+      deviceModel: map['deviceModel']?.toString(),
+      os: map['os']?.toString(),
+    );
+  }
 }

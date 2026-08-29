@@ -5,6 +5,12 @@ import 'package:joba_admin/features/avatars/models/avatar_item.dart';
 /// and uploads to Firebase Storage.
 abstract class AvatarRepository {
   Future<List<AvatarCategory>> seedCategories();
+  Future<List<AvatarItem>> fetchAvatars(String categoryId);
+  Future<void> createCategory(AvatarCategory category);
+  Future<void> updateCategory(AvatarCategory category);
+  Future<void> deleteCategory(String id);
+  Future<void> saveAvatar(AvatarItem avatar);
+  Future<void> deleteAvatar(String id);
 }
 
 class MockAvatarRepository implements AvatarRepository {
@@ -15,4 +21,22 @@ class MockAvatarRepository implements AvatarRepository {
         AvatarCategory(id: 'animal', name: 'Animal', order: 2),
         AvatarCategory(id: 'hijab', name: 'Hijab', order: 3),
       ];
+
+  @override
+  Future<List<AvatarItem>> fetchAvatars(String categoryId) async => const [];
+
+  @override
+  Future<void> createCategory(AvatarCategory category) async {}
+
+  @override
+  Future<void> updateCategory(AvatarCategory category) async {}
+
+  @override
+  Future<void> deleteCategory(String id) async {}
+
+  @override
+  Future<void> saveAvatar(AvatarItem avatar) async {}
+
+  @override
+  Future<void> deleteAvatar(String id) async {}
 }

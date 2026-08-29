@@ -29,6 +29,7 @@ import 'package:joba_admin/features/usage/controllers/usage_controller.dart';
 import 'package:joba_admin/features/users/controllers/users_controller.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:joba_admin/core/services/firestore_service.dart';
+import 'package:joba_admin/core/services/storage_service.dart';
 import 'package:joba_admin/core/widgets/firebase_bootstrap_error_app.dart';
 import 'package:joba_admin/firebase_options.dart';
 import 'package:joba_admin/routes/app_pages.dart';
@@ -91,14 +92,20 @@ class JobaAdminApp extends StatelessWidget {
 class _AppBindings extends Bindings {
   @override
   void dependencies() {
-    Get.lazyPut<UserRepository>(() => MockUserRepository());
-    Get.lazyPut<ArticleRepository>(() => MockArticleRepository());
-    Get.lazyPut<AvatarRepository>(() => MockAvatarRepository());
-    Get.lazyPut<ReportRepository>(() => MockReportRepository());
-    Get.lazyPut<AuditLogRepository>(() => MockAuditLogRepository());
-    Get.lazyPut<UsageRepository>(() => MockUsageRepository());
-    Get.lazyPut<PushRepository>(() => MockPushRepository());
-    Get.lazyPut<ScreenerRepository>(() => MockScreenerRepository());
+    // Services
+    Get.lazyPut(() => StorageService());
+
+    // Flag to force mock implementations during development/testing
+    const bool useMocks = bool.fromEnvironment('USE_MOCKS', defaultValue: true);
+
+    Get.lazyPut<UserRepository>(() => useMocks ? MockUserRepository() : MockUserRepository());
+    Get.lazyPut<ArticleRepository>(() => useMocks ? MockArticleRepository() : MockArticleRepository());
+    Get.lazyPut<AvatarRepository>(() => useMocks ? MockAvatarRepository() : MockAvatarRepository());
+    Get.lazyPut<ReportRepository>(() => useMocks ? MockReportRepository() : MockReportRepository());
+    Get.lazyPut<AuditLogRepository>(() => useMocks ? MockAuditLogRepository() : MockAuditLogRepository());
+    Get.lazyPut<UsageRepository>(() => useMocks ? MockUsageRepository() : MockUsageRepository());
+    Get.lazyPut<PushRepository>(() => useMocks ? MockPushRepository() : MockPushRepository());
+    Get.lazyPut<ScreenerRepository>(() => useMocks ? MockScreenerRepository() : MockScreenerRepository());
 
     Get.lazyPut(() => ShellController());
     Get.lazyPut(() => AuthController());

@@ -7,6 +7,12 @@ abstract class ArticleRepository {
   Future<List<ArticleCategory>> seedCategories();
   Future<List<Article>> seedArticles();
   Future<List<String>> seedTags();
+  Future<void> createArticle(Article article);
+  Future<void> updateArticle(Article article);
+  Future<void> deleteArticle(String id);
+  Future<void> createCategory(ArticleCategory category);
+  Future<void> updateCategory(ArticleCategory category);
+  Future<void> deleteCategory(String id);
 }
 
 class MockArticleRepository implements ArticleRepository {
@@ -293,4 +299,22 @@ class MockArticleRepository implements ArticleRepository {
       ),
     ];
   }
+
+  @override
+  Future<void> createArticle(Article article) async {}
+
+  @override
+  Future<void> updateArticle(Article article) async {}
+
+  @override
+  Future<void> deleteArticle(String id) async {}
+
+  @override
+  Future<void> createCategory(ArticleCategory category) async {}
+
+  @override
+  Future<void> updateCategory(ArticleCategory category) async {}
+
+  @override
+  Future<void> deleteCategory(String id) async {}
 }

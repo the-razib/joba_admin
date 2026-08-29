@@ -16,6 +16,7 @@
 /// layout vocabulary so the two stay conceptually interchangeable.
 library;
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 
@@ -225,11 +226,92 @@ class PushNotification {
     inAppLayout: inAppLayout ?? this.inAppLayout,
     imageUrl: clearImage ? null : (imageUrl ?? this.imageUrl),
     actionLabelBn: actionLabelBn ?? this.actionLabelBn,
-    actionLabelEn: actionLabelEn ?? this.actionLabelEn,
     actionUrl: actionUrl ?? this.actionUrl,
     status: status ?? this.status,
     sentAt: sentAt ?? this.sentAt,
     delivered: delivered ?? this.delivered,
     opened: opened ?? this.opened,
   );
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': {'bn': titleBn, 'en': titleEn},
+      'titleBn': titleBn,
+      'titleEn': titleEn,
+      'body': {'bn': bodyBn, 'en': bodyEn},
+      'bodyBn': bodyBn,
+      'bodyEn': bodyEn,
+      'audience': audience.name,
+      'channel': channel.name,
+      'inAppLayout': inAppLayout.name,
+      if (imageUrl != null) 'imageUrl': imageUrl,
+      'actionLabel': {'bn': actionLabelBn, 'en': actionLabelEn},
+      'actionLabelBn': actionLabelBn,
+      'actionLabelEn': actionLabelEn,
+      if (actionUrl != null) 'actionUrl': actionUrl,
+      'status': status.name,
+      if (sentAt != null) 'sentAt': Timestamp.fromDate(sentAt!),
+      if (sentAt != null) 'createdAt': Timestamp.fromDate(sentAt!),
+      'delivered': delivered,
+      'opened': opened,
+    };
+  }
+
+  factory PushNotification.fromMap(Map<String, dynamic> map, {String? docId}) {
+    DateTime? parseDate(dynamic val) {
+      if (val == null) return null;
+      if (val is Timestamp) return val.toDate();
+      if (val is DateTime) return val;
+      if (val is String) return DateTime.tryParse(val);
+      return null;
+    }
+
+    final titleMap = map['title'] as Map<String, dynamic>?;
+    final bodyMap = map['body'] as Map<String, dynamic>?;
+    final actionLabelMap = map['actionLabel'] as Map<String, dynamic>?;
+
+    final audStr = map['audience']?.toString().toLowerCase() ?? 'all';
+    final pushAudience = PushAudience.values.firstWhere(
+      (a) => a.name.toLowerCase() == audStr,
+      orElse: () => PushAudience.all,
+    );
+
+    final chStr = map['channel']?.toString().toLowerCase() ?? 'push';
+    final pushChannel = NotificationChannel.values.firstWhere(
+      (c) => c.name.toLowerCase() == chStr,
+      orElse: () => NotificationChannel.push,
+    );
+
+    final layStr = map['inAppLayout']?.toString().toLowerCase() ?? 'modal';
+    final pushLayout = InAppLayout.values.firstWhere(
+      (l) => l.name.toLowerCase() == layStr,
+      orElse: () => InAppLayout.modal,
+    );
+
+    final stStr = map['status']?.toString().toLowerCase() ?? 'draft';
+    final pushStatus = PushStatus.values.firstWhere(
+      (s) => s.name.toLowerCase() == stStr,
+      orElse: () => PushStatus.draft,
+    );
+
+    return PushNotification(
+      id: docId ?? map['id']?.toString() ?? '',
+      titleBn: titleMap?['bn']?.toString() ?? map['titleBn']?.toString() ?? '',
+      titleEn: titleMap?['en']?.toString() ?? map['titleEn']?.toString() ?? '',
+      bodyBn: bodyMap?['bn']?.toString() ?? map['bodyBn']?.toString() ?? '',
+      bodyEn: bodyMap?['en']?.toString() ?? map['bodyEn']?.toString() ?? '',
+      audience: pushAudience,
+      channel: pushChannel,
+      inAppLayout: pushLayout,
+      imageUrl: map['imageUrl']?.toString(),
+      actionLabelBn: actionLabelMap?['bn']?.toString() ?? map['actionLabelBn']?.toString() ?? '',
+      actionLabelEn: actionLabelMap?['en']?.toString() ?? map['actionLabelEn']?.toString() ?? '',
+      actionUrl: map['actionUrl']?.toString(),
+      status: pushStatus,
+      sentAt: parseDate(map['sentAt'] ?? map['createdAt']),
+      delivered: (map['delivered'] as num?)?.toInt() ?? 0,
+      opened: (map['opened'] as num?)?.toInt() ?? 0,
+    );
+  }
 }

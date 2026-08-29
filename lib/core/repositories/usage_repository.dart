@@ -14,6 +14,7 @@ import 'package:joba_admin/features/usage/models/usage_metrics.dart';
 abstract class UsageRepository {
   /// Newest day last. Callers slice the tail for shorter ranges.
   Future<List<UsageDay>> seedDailyUsage();
+  Future<List<UsageDay>> fetchDailyUsage({int days = 90});
 }
 
 class MockUsageRepository implements UsageRepository {
@@ -31,6 +32,13 @@ class MockUsageRepository implements UsageRepository {
       for (var i = _days - 1; i >= 0; i--)
         _dayAt(midnight.subtract(Duration(days: i)), _days - 1 - i, rand),
     ];
+  }
+
+  @override
+  Future<List<UsageDay>> fetchDailyUsage({int days = 90}) async {
+    final all = await seedDailyUsage();
+    if (days >= all.length) return all;
+    return all.sublist(all.length - days);
   }
 
   /// Compound growth plus weekend dips, so the trend and forecast have

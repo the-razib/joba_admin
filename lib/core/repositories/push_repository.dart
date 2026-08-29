@@ -39,6 +39,9 @@ class DispatchResult {
 ///   using [PushNotification.inAppLayout].
 abstract class PushRepository {
   Future<List<PushNotification>> seed();
+  Future<List<PushNotification>> fetchCampaigns({int limit = 50});
+  Future<void> saveDraft(PushNotification campaign);
+  Future<void> deleteCampaign(String id);
 
   /// Phase 3 posts to the callable and returns its report.
   Future<DispatchResult> dispatch(PushNotification campaign);
@@ -136,4 +139,13 @@ class MockPushRepository implements PushRepository {
       messageId: 'mock/${campaign.id}',
     );
   }
+
+  @override
+  Future<List<PushNotification>> fetchCampaigns({int limit = 50}) async => seed();
+
+  @override
+  Future<void> saveDraft(PushNotification campaign) async {}
+
+  @override
+  Future<void> deleteCampaign(String id) async {}
 }

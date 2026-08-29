@@ -1,4 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 /// Reminder kinds a user can track in the Joba app.
 /// Enum order is the global home-screen planning sequence;
@@ -50,4 +52,56 @@ enum ReminderKind {
         ReminderKind.periodPrep => 'প্রস্তুতি',
         ReminderKind.medicine => 'মেডিসিন',
       };
+}
+
+/// Global reminders configuration model for sequence & settings.
+class ReminderTemplate {
+  const ReminderTemplate({
+    required this.id,
+    required this.order,
+    this.updatedAt,
+    this.updatedBy,
+  });
+
+  final String id;
+  final List<ReminderKind> order;
+  final DateTime? updatedAt;
+  final String? updatedBy;
+
+  Map<String, dynamic> toMap() {
+    return {
+      'order': order.map((k) => k.name).toList(),
+      if (updatedAt != null) 'updatedAt': Timestamp.fromDate(updatedAt!),
+      if (updatedBy != null) 'updatedBy': updatedBy,
+    };
+  }
+
+  factory ReminderTemplate.fromMap(Map<String, dynamic> map, {String? docId}) {
+    DateTime? parseDate(dynamic val) {
+      if (val == null) return null;
+      if (val is Timestamp) return val.toDate();
+      if (val is DateTime) return val;
+      if (val is String) return DateTime.tryParse(val);
+      return null;
+    }
+
+    final rawOrder = map['order'] as List?;
+    final list = <ReminderKind>[];
+    if (rawOrder != null) {
+      for (final item in rawOrder) {
+        final kind = ReminderKind.values.firstWhereOrNull((k) => k.name == item?.toString());
+        if (kind != null) list.add(kind);
+      }
+    }
+    if (list.isEmpty) {
+      list.addAll([ReminderKind.pad, ReminderKind.periodPrep, ReminderKind.medicine]);
+    }
+
+    return ReminderTemplate(
+      id: docId ?? 'reminders',
+      order: list,
+      updatedAt: parseDate(map['updatedAt']),
+      updatedBy: map['updatedBy']?.toString(),
+    );
+  }
 }

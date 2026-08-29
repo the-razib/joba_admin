@@ -21,6 +21,24 @@ class AvatarCategory {
         order: order ?? this.order,
         active: active ?? this.active,
       );
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'order': order,
+      'active': active,
+    };
+  }
+
+  factory AvatarCategory.fromMap(Map<String, dynamic> map, {String? docId}) {
+    return AvatarCategory(
+      id: docId ?? map['id']?.toString() ?? '',
+      name: map['name']?.toString() ?? '',
+      order: (map['order'] as num?)?.toInt() ?? 0,
+      active: map['active'] as bool? ?? true,
+    );
+  }
 }
 
 class AvatarItem {
@@ -56,4 +74,25 @@ class AvatarItem {
         active: active ?? this.active,
         pendingBytes: pendingBytes,
       );
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'categoryId': categoryId,
+      'assetPath': assetPath,
+      'imageUrl': assetPath,
+      'order': order,
+      'active': active,
+    };
+  }
+
+  factory AvatarItem.fromMap(Map<String, dynamic> map, {String? docId}) {
+    return AvatarItem(
+      id: docId ?? map['id']?.toString() ?? '',
+      categoryId: map['categoryId']?.toString() ?? 'modern',
+      assetPath: map['imageUrl']?.toString() ?? map['assetPath']?.toString() ?? '',
+      order: (map['order'] as num?)?.toInt() ?? 0,
+      active: map['active'] as bool? ?? true,
+    );
+  }
 }
