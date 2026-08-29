@@ -86,11 +86,16 @@ class Report {
     required this.status,
     required this.priority,
     required this.date,
+    this.uid,
     this.deviceModel,
     this.os,
+    this.appVersion,
+    this.issues = const [],
+    this.isRead = false,
   });
 
   final String id;
+  final String? uid;
   final ReportType type;
   final String subject;
   final String description;
@@ -101,9 +106,19 @@ class Report {
   final DateTime date;
   final String? deviceModel;
   final String? os;
+  final String? appVersion;
+  final List<String> issues;
+  final bool isRead;
 
-  Report copyWith({ReportStatus? status, ReportPriority? priority}) => Report(
+  Report copyWith({
+    ReportStatus? status,
+    ReportPriority? priority,
+    List<String>? issues,
+    bool? isRead,
+  }) =>
+      Report(
         id: id,
+        uid: uid,
         type: type,
         subject: subject,
         description: description,
@@ -114,11 +129,15 @@ class Report {
         date: date,
         deviceModel: deviceModel,
         os: os,
+        appVersion: appVersion,
+        issues: issues ?? this.issues,
+        isRead: isRead ?? this.isRead,
       );
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      if (uid != null) 'uid': uid,
       'type': type.name,
       'subject': subject,
       'description': description,
@@ -126,10 +145,13 @@ class Report {
       'userEmail': userEmail,
       'status': status.name,
       'priority': priority.name,
+      'isRead': isRead,
       'date': Timestamp.fromDate(date),
       'createdAt': Timestamp.fromDate(date),
       if (deviceModel != null) 'deviceModel': deviceModel,
       if (os != null) 'os': os,
+      if (appVersion != null) 'appVersion': appVersion,
+      if (issues.isNotEmpty) 'issues': issues,
     };
   }
 
@@ -159,8 +181,16 @@ class Report {
       orElse: () => ReportPriority.medium,
     );
 
+    final rawIssues = map['issues'];
+    final issuesList = rawIssues is List
+        ? rawIssues.map((e) => e.toString()).toList()
+        : <String>[];
+
+    final isReadVal = map['isRead'] as bool? ?? false;
+
     return Report(
       id: docId ?? map['id']?.toString() ?? '',
+      uid: map['uid']?.toString(),
       type: reportType,
       subject: map['subject']?.toString() ?? '',
       description: map['description']?.toString() ?? '',
@@ -168,9 +198,12 @@ class Report {
       userEmail: map['userEmail']?.toString() ?? '',
       status: reportStatus,
       priority: reportPriority,
+      isRead: isReadVal,
       date: parseDate(map['date'] ?? map['createdAt']),
       deviceModel: map['deviceModel']?.toString(),
       os: map['os']?.toString(),
+      appVersion: map['appVersion']?.toString(),
+      issues: issuesList,
     );
   }
 }

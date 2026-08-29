@@ -4,6 +4,7 @@ import 'package:joba_admin/core/repositories/article_repository.dart';
 import 'package:joba_admin/core/repositories/audit_log_repository.dart';
 import 'package:joba_admin/core/repositories/avatar_repository.dart';
 import 'package:joba_admin/core/repositories/firebase_avatar_repository.dart';
+import 'package:joba_admin/core/repositories/firebase_report_repository.dart';
 import 'package:joba_admin/core/repositories/push_repository.dart';
 import 'package:joba_admin/core/repositories/report_repository.dart';
 import 'package:joba_admin/core/repositories/screener_repository.dart';
@@ -106,7 +107,7 @@ class _AppBindings extends Bindings {
     Get.lazyPut<UserRepository>(() => enableMocks ? MockUserRepository() : MockUserRepository());
     Get.lazyPut<ArticleRepository>(() => enableMocks ? MockArticleRepository() : MockArticleRepository());
     Get.lazyPut<AvatarRepository>(() => enableMocks ? MockAvatarRepository() : FirebaseAvatarRepository());
-    Get.lazyPut<ReportRepository>(() => enableMocks ? MockReportRepository() : MockReportRepository());
+    Get.lazyPut<ReportRepository>(() => enableMocks ? MockReportRepository() : FirebaseReportRepository());
     Get.lazyPut<AuditLogRepository>(() => enableMocks ? MockAuditLogRepository() : MockAuditLogRepository());
     Get.lazyPut<UsageRepository>(() => enableMocks ? MockUsageRepository() : MockUsageRepository());
     Get.lazyPut<PushRepository>(() => enableMocks ? MockPushRepository() : MockPushRepository());

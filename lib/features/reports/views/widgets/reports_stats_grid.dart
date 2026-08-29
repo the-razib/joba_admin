@@ -17,7 +17,7 @@ class ReportsStatsGrid extends GetView<ReportsController> {
         (
           Icons.rate_review_outlined,
           'Total Reports',
-          '${controller.all.length * 208}',
+          '${controller.all.length}',
           AppColors.accent,
         ),
         (

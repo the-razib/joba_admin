@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:joba_admin/features/reports/models/report.dart';
+import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/utils/format.dart';
 import 'package:joba_admin/core/widgets/badges.dart';
@@ -32,15 +33,45 @@ class ReportsMobileCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        report.subject,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: context.palette.textPrimary,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      Row(
+                        children: [
+                          if (!report.isRead) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              margin: const EdgeInsets.only(right: 6),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'NEW',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                          Expanded(
+                            child: Text(
+                              report.subject,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: context.palette.textPrimary,
+                                fontSize: 13.5,
+                                fontWeight: report.isRead
+                                    ? FontWeight.w500
+                                    : FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       Text(
                         '${report.userName} • ${formatDate(report.date)}',

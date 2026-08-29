@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/features/reports/models/report.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
-import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/core/utils/format.dart';
 import 'package:joba_admin/core/widgets/avatar_circle.dart';
 import 'package:joba_admin/core/widgets/badges.dart';
 import 'package:joba_admin/core/widgets/detail_panel.dart';
 import 'package:joba_admin/features/reports/controllers/reports_controller.dart';
+import 'package:joba_admin/features/reports/models/report.dart';
 import 'package:joba_admin/features/reports/views/widgets/report_type_icon.dart';
 
 /// Helper to open the full detail slide-over panel for a report.
 void openReportDetailPanel(BuildContext context, String reportId) {
+  try {
+    Get.find<ReportsController>().markAsRead(reportId);
+  } catch (_) {}
+
   showDetailPanel(
     context,
     title: 'Report Details',
@@ -88,7 +91,9 @@ class ReportDetailBody extends GetView<ReportsController> {
                         ),
                       ),
                       Text(
-                        r.userEmail,
+                        r.userEmail.isNotEmpty
+                            ? r.userEmail
+                            : (r.uid != null ? 'UID: ${r.uid}' : 'Anonymous'),
                         style: TextStyle(
                           color: palette.textSecondary,
                           fontSize: 11.5,
@@ -118,55 +123,139 @@ class ReportDetailBody extends GetView<ReportsController> {
                     children: [
                       _sectionLabel(context, 'Priority'),
                       const SizedBox(height: 6),
-                      reportPriorityBadge(r.priority),
+                      PopupMenuButton<ReportPriority>(
+                        onSelected: (p) => controller.updatePriority(id, p),
+                        tooltip: 'Change Priority',
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            reportPriorityBadge(r.priority),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.arrow_drop_down,
+                              size: 16,
+                              color: palette.textSecondary,
+                            ),
+                          ],
+                        ),
+                        itemBuilder: (_) => [
+                          for (final p in ReportPriority.values)
+                            PopupMenuItem(
+                              value: p,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: p.color,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(p.displayName),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
+            if (r.issues.isNotEmpty) ...[
+              const SizedBox(height: 18),
+              _sectionLabel(context, 'Selected Issues'),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final issue in r.issues)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Text(
+                        issue,
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
             const SizedBox(height: 18),
             _sectionLabel(context, 'Description'),
             const SizedBox(height: 6),
-            Text(
-              r.description,
-              style: TextStyle(
-                color: palette.textSecondary,
-                fontSize: 13,
-                height: 1.6,
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: palette.card,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: palette.border),
+              ),
+              child: Text(
+                r.description.isNotEmpty ? r.description : 'No description provided.',
+                style: TextStyle(
+                  color: palette.textSecondary,
+                  fontSize: 13,
+                  height: 1.6,
+                ),
               ),
             ),
             const SizedBox(height: 18),
-            _sectionLabel(context, 'Screenshots (2)'),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                for (final c in [AppColors.accent, AppColors.primary])
-                  Container(
-                    width: 84,
-                    height: 120,
-                    margin: const EdgeInsets.only(right: 10),
-                    decoration: BoxDecoration(
-                      color: c.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: c.withValues(alpha: 0.3)),
-                    ),
-                    child: Icon(
-                      Icons.phone_android,
-                      color: c.withValues(alpha: 0.6),
-                      size: 28,
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            _sectionLabel(context, 'Device Info'),
+            _sectionLabel(context, 'Device & Environment'),
             const SizedBox(height: 6),
-            Text(
-              '${r.deviceModel ?? 'Unknown'} • ${r.os ?? '—'}',
-              style: TextStyle(color: palette.textSecondary, fontSize: 12.5),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: palette.card,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: palette.border),
+              ),
+              child: Column(
+                children: [
+                  _deviceInfoRow(
+                    context,
+                    Icons.phone_android_outlined,
+                    'Device Model',
+                    r.deviceModel ?? 'Unknown',
+                  ),
+                  const Divider(height: 16),
+                  _deviceInfoRow(
+                    context,
+                    Icons.settings_system_daydream_outlined,
+                    'Operating System',
+                    r.os ?? 'Unknown',
+                  ),
+                  if (r.appVersion != null) ...[
+                    const Divider(height: 16),
+                    _deviceInfoRow(
+                      context,
+                      Icons.apps_outlined,
+                      'App Version',
+                      'v${r.appVersion}',
+                    ),
+                  ],
+                ],
+              ),
             ),
             const SizedBox(height: 18),
-            _sectionLabel(context, 'History'),
+            _sectionLabel(context, 'Timeline'),
             const SizedBox(height: 8),
             _historyRow(
               context,
@@ -176,13 +265,41 @@ class ReportDetailBody extends GetView<ReportsController> {
             if (r.status != ReportStatus.pending)
               _historyRow(
                 context,
-                formatDateTime(r.date.add(const Duration(hours: 5))),
-                'Status changed to ${r.status.displayName}',
+                'Current Status',
+                'Status is ${r.status.displayName}',
               ),
           ],
         ),
       );
     });
+  }
+
+  Widget _deviceInfoRow(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+  ) {
+    final palette = context.palette;
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: palette.textSecondary),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: TextStyle(color: palette.textSecondary, fontSize: 12),
+        ),
+        const Spacer(),
+        Text(
+          value,
+          style: TextStyle(
+            color: palette.textPrimary,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _sectionLabel(BuildContext context, String title) => Text(
@@ -250,26 +367,18 @@ class ReportDetailFooter extends GetView<ReportsController> {
 
       return Row(
         children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () => AppToast.info(
-                'Assigned',
-                'Report assigned to support team (mock).',
-              ),
-              icon: const Icon(Icons.person_add_alt_outlined, size: 16),
-              label: const Text('Assign to Team'),
+          OutlinedButton.icon(
+            onPressed: () => _confirmDelete(context, r),
+            icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
+            label: const Text('Delete', style: TextStyle(color: AppColors.danger)),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppColors.danger),
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: PopupMenuButton<ReportStatus>(
-              onSelected: (status) {
-                controller.updateStatus(id, status);
-                AppToast.success(
-                  'Status updated',
-                  'Report marked as ${status.displayName} (mock).',
-                );
-              },
+              onSelected: (status) => controller.updateStatus(id, status),
               child: Container(
                 height: 44,
                 alignment: Alignment.center,
@@ -303,7 +412,11 @@ class ReportDetailFooter extends GetView<ReportsController> {
                     value: s,
                     child: Text(
                       s.displayName,
-                      style: const TextStyle(fontSize: 13),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight:
+                            r.status == s ? FontWeight.bold : FontWeight.normal,
+                      ),
                     ),
                   ),
               ],
@@ -312,5 +425,21 @@ class ReportDetailFooter extends GetView<ReportsController> {
         ],
       );
     });
+  }
+
+  void _confirmDelete(BuildContext context, Report report) {
+    Get.defaultDialog(
+      title: 'Delete Report',
+      middleText: 'Are you sure you want to delete this report from ${report.userName}?',
+      textConfirm: 'Delete',
+      textCancel: 'Cancel',
+      confirmTextColor: Colors.white,
+      buttonColor: AppColors.danger,
+      onConfirm: () {
+        Get.back(); // close dialog
+        Get.back(); // close slide-over panel
+        controller.deleteReport(report.id);
+      },
+    );
   }
 }
