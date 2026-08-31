@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/features/articles/models/article.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/utils/format.dart';
@@ -9,6 +9,7 @@ import 'package:joba_admin/core/widgets/article_thumb.dart';
 import 'package:joba_admin/core/widgets/badges.dart';
 import 'package:joba_admin/core/widgets/confirm_dialog.dart';
 import 'package:joba_admin/features/articles/controllers/articles_controller.dart';
+import 'package:joba_admin/features/articles/models/article.dart';
 
 /// Body content of article detail panel and mobile slide-over.
 class ArticleDetailsBody extends StatefulWidget {
@@ -30,6 +31,12 @@ class _ArticleDetailsBodyState extends State<ArticleDetailsBody> {
   Widget build(BuildContext context) {
     final palette = context.palette;
     final controller = Get.find<ArticlesController>();
+    final bool canManage = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageContent
+        : true;
+    final bool isSuper = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageAdmins
+        : true;
 
     return Column(
       children: [
@@ -158,64 +165,68 @@ class _ArticleDetailsBodyState extends State<ArticleDetailsBody> {
                 if (_tab == 1) _seoMediaTab(context),
                 if (_tab == 2) _statsTab(context),
                 if (_tab == 3) _historyTab(context),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppColors.danger.withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.delete_outline,
-                        color: AppColors.danger,
-                        size: 20,
+                if (isSuper)
+                  Container(
+                    margin: const EdgeInsets.only(top: 18),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.danger.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.danger.withValues(alpha: 0.25),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Danger Zone',
-                              style: TextStyle(
-                                color: AppColors.danger,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            Text(
-                              'Delete this article permanently. This action cannot be undone.',
-                              style: TextStyle(
-                                color: palette.textSecondary,
-                                fontSize: 11.5,
-                              ),
-                            ),
-                          ],
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          color: AppColors.danger,
+                          size: 20,
                         ),
-                      ),
-                      OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.danger,
-                          side: const BorderSide(color: AppColors.danger),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Danger Zone',
+                                style: TextStyle(
+                                  color: AppColors.danger,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Text(
+                                'Delete this article permanently. This action cannot be undone.',
+                                style: TextStyle(
+                                  color: palette.textSecondary,
+                                  fontSize: 11.5,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        onPressed: () async {
-                          final ok = await showConfirmDialog(
-                            context,
-                            title: 'Delete article?',
-                            message:
-                                '"${a.titleEn}" will be removed for all users.',
-                            confirmLabel: 'Delete',
-                            danger: true,
-                          );
-                          if (ok) await controller.deleteArticle(a.id);
-                        },
-                        child: const Text('Delete'),
-                      ),
-                    ],
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.danger,
+                            side: const BorderSide(color: AppColors.danger),
+                          ),
+                          onPressed: () async {
+                            final ok = await showConfirmDialog(
+                              context,
+                              title: 'Delete article?',
+                              message:
+                                  '"${a.titleEn}" will be removed for all users.',
+                              confirmLabel: 'Delete',
+                              danger: true,
+                            );
+                            if (ok) await controller.deleteArticle(a.id);
+                          },
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -227,19 +238,23 @@ class _ArticleDetailsBodyState extends State<ArticleDetailsBody> {
           ),
           child: Row(
             children: [
-              OutlinedButton.icon(
-                onPressed: () => _showReader(context),
-                icon: const Icon(Icons.visibility_outlined, size: 16),
-                label: const Text('Preview'),
-              ),
-              const SizedBox(width: 10),
               Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => controller.startEdit(a),
-                  icon: const Icon(Icons.edit_outlined, size: 16),
-                  label: const Text('Edit Article'),
+                child: OutlinedButton.icon(
+                  onPressed: () => _showReader(context),
+                  icon: const Icon(Icons.visibility_outlined, size: 16),
+                  label: const Text('Preview'),
                 ),
               ),
+              if (canManage) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => controller.startEdit(a),
+                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    label: const Text('Edit Article'),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

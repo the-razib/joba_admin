@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/features/reminders/models/reminder_template.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/theme/responsive.dart';
 import 'package:joba_admin/core/widgets/section_card.dart';
 import 'package:joba_admin/features/reminders/controllers/reminders_controller.dart';
+import 'package:joba_admin/features/reminders/models/reminder_template.dart';
 import 'package:joba_admin/features/reminders/views/widgets/reminder_icon_widget.dart';
 
 /// The main card for viewing and reordering the home screen reminder list.
@@ -14,19 +15,24 @@ class RemindersOrderCard extends GetView<RemindersController> {
 
   @override
   Widget build(BuildContext context) {
+    final bool canManage = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageContent
+        : true;
+
     return SectionCard(
       title: 'Home Screen Order',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Obx(
-            () => controller.isDirty
-                ? const Padding(
-                    padding: EdgeInsets.only(bottom: 12),
-                    child: _DirtyNotice(),
-                  )
-                : const SizedBox.shrink(),
-          ),
+          if (canManage)
+            Obx(
+              () => controller.isDirty
+                  ? const Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: _DirtyNotice(),
+                    )
+                  : const SizedBox.shrink(),
+            ),
           LayoutBuilder(
             builder: (context, constraints) {
               final compact = constraints.maxWidth < 420;
@@ -35,7 +41,7 @@ class RemindersOrderCard extends GetView<RemindersController> {
                   buildDefaultDragHandles: false,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  onReorder: controller.move,
+                  onReorder: canManage ? controller.move : (oldIdx, newIdx) {},
                   itemCount: controller.order.length,
                   itemBuilder: (context, i) {
                     final kind = controller.order[i];
@@ -45,6 +51,7 @@ class RemindersOrderCard extends GetView<RemindersController> {
                       index: i,
                       isLast: i == controller.order.length - 1,
                       compact: compact,
+                      canManage: canManage,
                     );
                   },
                 ),
@@ -56,18 +63,22 @@ class RemindersOrderCard extends GetView<RemindersController> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(
-                Responsive.isMobile(context)
-                    ? Icons.touch_app_outlined
-                    : Icons.drag_indicator,
+                canManage
+                    ? (Responsive.isMobile(context)
+                        ? Icons.touch_app_outlined
+                        : Icons.drag_indicator)
+                    : Icons.lock_outline,
                 size: 14,
                 color: context.palette.textSecondary,
               ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  Responsive.isMobile(context)
-                      ? 'Long-press a reminder to drag it, or use the arrows.'
-                      : 'Drag the handle or use the arrows to reorder.',
+                  canManage
+                      ? (Responsive.isMobile(context)
+                          ? 'Long-press a reminder to drag it, or use the arrows.'
+                          : 'Drag the handle or use the arrows to reorder.')
+                      : 'View-only mode: Reminder sequence is managed by Editors and Super Admins.',
                   style: TextStyle(
                     color: context.palette.textSecondary,
                     fontSize: 11,
@@ -121,12 +132,14 @@ class _ReminderTile extends GetView<RemindersController> {
     required this.index,
     required this.isLast,
     required this.compact,
+    this.canManage = true,
   });
 
   final ReminderKind kind;
   final int index;
   final bool isLast;
   final bool compact;
+  final bool canManage;
 
   @override
   Widget build(BuildContext context) {
@@ -148,7 +161,7 @@ class _ReminderTile extends GetView<RemindersController> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              if (!compact) ...[
+              if (!compact && canManage) ...[
                 ReorderableDragStartListener(
                   index: index,
                   child: MouseRegion(
@@ -216,8 +229,10 @@ class _ReminderTile extends GetView<RemindersController> {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              _MoveButtons(index: index, isLast: isLast),
+              if (canManage) ...[
+                const SizedBox(width: 8),
+                _MoveButtons(index: index, isLast: isLast),
+              ],
             ],
           ),
           const SizedBox(height: 10),

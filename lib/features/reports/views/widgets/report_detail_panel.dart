@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/utils/format.dart';
@@ -12,6 +13,10 @@ import 'package:joba_admin/features/reports/views/widgets/report_type_icon.dart'
 
 /// Helper to open the full detail slide-over panel for a report.
 void openReportDetailPanel(BuildContext context, String reportId) {
+  final bool canManage = Get.isRegistered<AuthService>()
+      ? Get.find<AuthService>().canManageContent
+      : true;
+
   try {
     Get.find<ReportsController>().markAsRead(reportId);
   } catch (_) {}
@@ -20,7 +25,7 @@ void openReportDetailPanel(BuildContext context, String reportId) {
     context,
     title: 'Report Details',
     child: ReportDetailBody(id: reportId),
-    footer: ReportDetailFooter(id: reportId),
+    footer: canManage ? ReportDetailFooter(id: reportId) : null,
   );
 }
 
@@ -36,6 +41,9 @@ class ReportDetailBody extends GetView<ReportsController> {
       final r = controller.all.firstWhereOrNull((e) => e.id == id);
       if (r == null) return const SizedBox();
       final palette = context.palette;
+      final bool canManage = Get.isRegistered<AuthService>()
+          ? Get.find<AuthService>().canManageContent
+          : true;
 
       return SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -123,42 +131,45 @@ class ReportDetailBody extends GetView<ReportsController> {
                     children: [
                       _sectionLabel(context, 'Priority'),
                       const SizedBox(height: 6),
-                      PopupMenuButton<ReportPriority>(
-                        onSelected: (p) => controller.updatePriority(id, p),
-                        tooltip: 'Change Priority',
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            reportPriorityBadge(r.priority),
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.arrow_drop_down,
-                              size: 16,
-                              color: palette.textSecondary,
-                            ),
-                          ],
-                        ),
-                        itemBuilder: (_) => [
-                          for (final p in ReportPriority.values)
-                            PopupMenuItem(
-                              value: p,
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: BoxDecoration(
-                                      color: p.color,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(p.displayName),
-                                ],
+                      if (canManage)
+                        PopupMenuButton<ReportPriority>(
+                          onSelected: (p) => controller.updatePriority(id, p),
+                          tooltip: 'Change Priority',
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              reportPriorityBadge(r.priority),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.arrow_drop_down,
+                                size: 16,
+                                color: palette.textSecondary,
                               ),
-                            ),
-                        ],
-                      ),
+                            ],
+                          ),
+                          itemBuilder: (_) => [
+                            for (final p in ReportPriority.values)
+                              PopupMenuItem(
+                                value: p,
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: p.color,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(p.displayName),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        )
+                      else
+                        reportPriorityBadge(r.priority),
                     ],
                   ),
                 ),
@@ -361,21 +372,27 @@ class ReportDetailFooter extends GetView<ReportsController> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isSuper = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageAdmins
+        : true;
+
     return Obx(() {
       final r = controller.all.firstWhereOrNull((e) => e.id == id);
       if (r == null) return const SizedBox();
 
       return Row(
         children: [
-          OutlinedButton.icon(
-            onPressed: () => _confirmDelete(context, r),
-            icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
-            label: const Text('Delete', style: TextStyle(color: AppColors.danger)),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.danger),
+          if (isSuper) ...[
+            OutlinedButton.icon(
+              onPressed: () => _confirmDelete(context, r),
+              icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
+              label: const Text('Delete', style: TextStyle(color: AppColors.danger)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.danger),
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
+            const SizedBox(width: 10),
+          ],
           Expanded(
             child: PopupMenuButton<ReportStatus>(
               onSelected: (status) => controller.updateStatus(id, status),

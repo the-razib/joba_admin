@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/theme/responsive.dart';
 import 'package:joba_admin/core/widgets/page_header.dart';
 import 'package:joba_admin/features/push_notifications/controllers/push_controller.dart';
@@ -15,6 +16,10 @@ class PushScreen extends GetView<PushController> {
   @override
   Widget build(BuildContext context) {
     final mobile = Responsive.isMobile(context);
+    final bool canManage = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageContent
+        : true;
+
     return Obx(() {
       if (controller.loading.value) {
         return const Center(child: CircularProgressIndicator());
@@ -32,15 +37,17 @@ class PushScreen extends GetView<PushController> {
                   subtitle:
                       'Push and in-app dialogs, composed in বাংলা and '
                       'English',
-                  actions: [
-                    ElevatedButton.icon(
-                      onPressed: () => showPushComposer(context),
-                      icon: const Icon(Icons.add, size: 17),
-                      label: mobile
-                          ? const SizedBox()
-                          : const Text('New Notification'),
-                    ),
-                  ],
+                  actions: canManage
+                      ? [
+                          ElevatedButton.icon(
+                            onPressed: () => showPushComposer(context),
+                            icon: const Icon(Icons.add, size: 17),
+                            label: mobile
+                                ? const SizedBox()
+                                : const Text('New Notification'),
+                          ),
+                        ]
+                      : const [],
                 ),
                 const SizedBox(height: 16),
                 const PushStatsGrid(),

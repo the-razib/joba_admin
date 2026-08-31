@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/features/users/models/app_user.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/widgets/confirm_dialog.dart';
@@ -19,6 +20,12 @@ class UserActionButtons extends GetView<UsersController> {
   Widget build(BuildContext context) {
     const box = BoxConstraints(minWidth: _slot, minHeight: _slot);
     final u = user;
+    final bool canManage = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageContent
+        : true;
+    final bool isSuper = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageAdmins
+        : true;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -39,50 +46,53 @@ class UserActionButtons extends GetView<UsersController> {
             onPressed: () => openUserDetail(context, u.uid),
           ),
         ),
-        SizedBox(
-          width: _slot,
-          height: _slot,
-          child: IconButton(
-            tooltip: 'Edit',
-            visualDensity: VisualDensity.compact,
-            padding: EdgeInsets.zero,
-            constraints: box,
-            icon: const Icon(
-              Icons.edit_outlined,
-              size: 18,
-              color: AppColors.info,
+        if (canManage) ...[
+          SizedBox(
+            width: _slot,
+            height: _slot,
+            child: IconButton(
+              tooltip: 'Edit',
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: box,
+              icon: const Icon(
+                Icons.edit_outlined,
+                size: 18,
+                color: AppColors.info,
+              ),
+              onPressed: () => openUserDetail(context, u.uid),
             ),
-            onPressed: () => openUserDetail(context, u.uid),
           ),
-        ),
-        SizedBox(
-          width: _slot,
-          height: _slot,
-          child: PopupMenuButton<String>(
-            tooltip: 'More',
-            padding: EdgeInsets.zero,
-            iconSize: 18,
-            onSelected: (v) => _handleMenuAction(context, u, v),
-            itemBuilder: (_) => [
-              PopupMenuItem(
-                value: 'block',
-                child: Text(
-                  u.status == UserStatus.blocked
-                      ? 'Unblock user'
-                      : 'Block user',
-                  style: const TextStyle(fontSize: 13),
+          SizedBox(
+            width: _slot,
+            height: _slot,
+            child: PopupMenuButton<String>(
+              tooltip: 'More',
+              padding: EdgeInsets.zero,
+              iconSize: 18,
+              onSelected: (v) => _handleMenuAction(context, u, v),
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'block',
+                  child: Text(
+                    u.status == UserStatus.blocked
+                        ? 'Unblock user'
+                        : 'Block user',
+                    style: const TextStyle(fontSize: 13),
+                  ),
                 ),
-              ),
-              const PopupMenuItem(
-                value: 'delete',
-                child: Text(
-                  'Delete user',
-                  style: TextStyle(fontSize: 13, color: AppColors.danger),
-                ),
-              ),
-            ],
+                if (isSuper)
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Text(
+                      'Delete user',
+                      style: TextStyle(fontSize: 13, color: AppColors.danger),
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
+        ],
       ],
     );
   }

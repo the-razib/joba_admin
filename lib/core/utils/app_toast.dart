@@ -32,7 +32,7 @@ class AppToast {
     ToastType type = ToastType.info,
     Duration duration = const Duration(milliseconds: 3500),
   }) {
-    if (Get.testMode && (Get.key.currentState == null || Get.key.currentState?.overlay == null)) {
+    if (Get.testMode || Get.overlayContext == null || Get.context == null) {
       return;
     }
     final context = Get.context;

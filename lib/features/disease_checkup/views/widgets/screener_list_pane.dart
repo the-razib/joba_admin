@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/widgets/badges.dart';
@@ -15,6 +16,12 @@ class ScreenerListPane extends GetView<AdminScreenerController> {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    final bool canManage = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageContent
+        : true;
+    final bool isSuper = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageAdmins
+        : true;
 
     return Container(
       decoration: BoxDecoration(
@@ -53,26 +60,28 @@ class ScreenerListPane extends GetView<AdminScreenerController> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    ScreenerEditorDialog.show(
-                      context,
-                      onSave: (screener, isNew) =>
-                          controller.saveScreener(screener, isNew: isNew),
-                    );
-                  },
-                  icon: const Icon(Icons.add, size: 16),
-                  label: const Text('Add Screener'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
+                if (canManage) ...[
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      ScreenerEditorDialog.show(
+                        context,
+                        onSave: (screener, isNew) =>
+                            controller.saveScreener(screener, isNew: isNew),
+                      );
+                    },
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('Add Screener'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -273,87 +282,91 @@ class ScreenerListPane extends GetView<AdminScreenerController> {
                             ),
 
                           // Quick Actions Menu
-                          PopupMenuButton<String>(
-                            icon: const Icon(Icons.more_vert, size: 18),
-                            tooltip: 'Actions',
-                            onSelected: (val) async {
-                              if (val == 'edit') {
-                                ScreenerEditorDialog.show(
-                                  context,
-                                  screener: s,
-                                  onSave: (updated, isNew) {
-                                    controller.saveScreener(
-                                      updated,
+                          if (canManage)
+                            PopupMenuButton<String>(
+                              icon: const Icon(
+                                Icons.more_vert,
+                                size: 18,
+                                color: Colors.grey,
+                              ),
+                              onSelected: (val) async {
+                                if (val == 'edit') {
+                                  ScreenerEditorDialog.show(
+                                    context,
+                                    screener: s,
+                                    onSave: (screener, isNew) =>
+                                        controller.saveScreener(
+                                      screener,
                                       isNew: isNew,
-                                    );
-                                  },
-                                );
-                              } else if (val == 'toggle') {
-                                controller.toggleScreenerActive(
-                                  s.id,
-                                  !s.enabled,
-                                );
-                              } else if (val == 'delete') {
-                                final confirmed = await showConfirmDialog(
-                                  context,
-                                  title: 'Delete Screener',
-                                  message:
-                                      'Are you sure you want to delete "${s.nameEn}" and its questionnaires?',
-                                  confirmLabel: 'Delete',
-                                  danger: true,
-                                );
-                                if (confirmed) {
-                                  controller.deleteScreener(s.id);
+                                    ),
+                                  );
+                                } else if (val == 'toggle') {
+                                  controller.toggleScreenerActive(
+                                    s.id,
+                                    !s.enabled,
+                                  );
+                                } else if (val == 'delete') {
+                                  final confirmed = await showConfirmDialog(
+                                    context,
+                                    title: 'Delete Screener',
+                                    message:
+                                        'Are you sure you want to delete "${s.nameEn}" and its questionnaires?',
+                                    confirmLabel: 'Delete',
+                                    danger: true,
+                                  );
+                                  if (confirmed) {
+                                    controller.deleteScreener(s.id);
+                                  }
                                 }
-                              }
-                            },
-                            itemBuilder: (ctx) => [
-                              const PopupMenuItem(
-                                value: 'edit',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.edit_outlined, size: 16),
-                                    SizedBox(width: 8),
-                                    Text('Edit Screener'),
-                                  ],
+                              },
+                              itemBuilder: (ctx) => [
+                                const PopupMenuItem(
+                                  value: 'edit',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.edit_outlined, size: 16),
+                                      SizedBox(width: 8),
+                                      Text('Edit Screener'),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              PopupMenuItem(
-                                value: 'toggle',
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      s.enabled
-                                          ? Icons.visibility_off_outlined
-                                          : Icons.visibility_outlined,
-                                      size: 16,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      s.enabled ? 'Deactivate' : 'Activate',
-                                    ),
-                                  ],
+                                PopupMenuItem(
+                                  value: 'toggle',
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        s.enabled
+                                            ? Icons.visibility_off_outlined
+                                            : Icons.visibility_outlined,
+                                        size: 16,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        s.enabled ? 'Deactivate' : 'Activate',
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              const PopupMenuItem(
-                                value: 'delete',
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.delete_outline,
-                                      size: 16,
-                                      color: Colors.red,
+                                if (isSuper)
+                                  const PopupMenuItem(
+                                    value: 'delete',
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.delete_outline,
+                                          size: 16,
+                                          color: Colors.red,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Delete',
+                                          style: TextStyle(color: Colors.red),
+                                        ),
+                                      ],
                                     ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Delete',
-                                      style: TextStyle(color: Colors.red),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                                  ),
+                              ],
+                            ),
                         ],
                       ),
                     ),

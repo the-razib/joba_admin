@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for Admin RBAC
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        (request.auth.token.role in ['viewer', 'editor', 'superAdmin']) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isEditorOrSuperAdmin() {
+      return isAuthenticated() && (
+        (request.auth.token.role in ['editor', 'superAdmin']) ||
+        (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['editor', 'superAdmin'] &&
+         get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true)
+      );
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.role == 'superAdmin' ||
+        (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'superAdmin' &&
+         get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true)
+      );
+    }
+
+    // ─── User Data ────────────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read: if (isAuthenticated() && request.auth.uid == userId) || isAdmin();
+      allow write: if (isAuthenticated() && request.auth.uid == userId) || isEditorOrSuperAdmin();
+
+      match /cycles/{cycleId} {
+        allow read: if (isAuthenticated() && request.auth.uid == userId) || isAdmin();
+        allow write: if (isAuthenticated() && request.auth.uid == userId) || isEditorOrSuperAdmin();
+      }
+
+      match /medicine_reminders/{reminderId} {
+        allow read: if (isAuthenticated() && request.auth.uid == userId) || isAdmin();
+        allow write: if (isAuthenticated() && request.auth.uid == userId) || isEditorOrSuperAdmin();
+      }
+
+      match /daily_entries/{dateString} {
+        allow read: if (isAuthenticated() && request.auth.uid == userId) || isAdmin();
+        allow write: if (isAuthenticated() && request.auth.uid == userId) || isEditorOrSuperAdmin();
+      }
+    }
+
+    // ─── Avatar Categories & Avatars ──────────────────────────────────────────
+    match /avatar_categories/{categoryId} {
+      allow read: if true;
+      allow write: if isEditorOrSuperAdmin();
+    }
+
+    match /avatars/{avatarId} {
+      allow read: if true;
+      allow write: if isEditorOrSuperAdmin();
+    }
+
+    // ─── Articles & Categories ────────────────────────────────────────────────
+    match /articles/{articleId} {
+      allow read: if true;
+      allow write: if isEditorOrSuperAdmin();
+    }
+
+    match /article_categories/{categoryId} {
+      allow read: if true;
+      allow write: if isEditorOrSuperAdmin();
+    }
+
+    // ─── Screeners (Disease Checkup) ─────────────────────────────────────────
+    match /screeners/{screenerId} {
+      allow read: if true;
+      allow write: if isEditorOrSuperAdmin();
+    }
+
+    // ─── Reports & Feedback ──────────────────────────────────────────────────
+    match /reports/{reportId} {
+      allow create: if isAuthenticated();
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ─── Audit Logs ──────────────────────────────────────────────────────────
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if isEditorOrSuperAdmin();
+    }
+
+    // ─── Admin Profiles & Management ─────────────────────────────────────────
+    match /admin_profiles/{adminId} {
+      allow read: if isAuthenticated() && (request.auth.uid == adminId || isAdmin());
+      allow write: if isSuperAdmin();
+    }
+
+    match /admins/{adminId} {
+      allow read: if isAuthenticated() && (request.auth.uid == adminId || isAdmin());
+      allow write: if isSuperAdmin() || (isAuthenticated() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    // ─── App Config & Settings ───────────────────────────────────────────────
+    match /app_config/{configId} {
+      allow read: if true;
+      allow write: if isEditorOrSuperAdmin();
+    }
+  }
+}

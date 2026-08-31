@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/features/disease_checkup/models/screener_admin_model.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/widgets/confirm_dialog.dart';
@@ -11,6 +12,10 @@ class QuestionsPane extends GetView<AdminScreenerController> {
 
   @override
   Widget build(BuildContext context) {
+    final bool canManage = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageContent
+        : true;
+
     return Obx(() {
       final s = controller.selectedScreener;
       if (s == null) {
@@ -65,36 +70,40 @@ class QuestionsPane extends GetView<AdminScreenerController> {
                       ),
                     ],
                   );
-                  final addButton = ElevatedButton.icon(
-                    onPressed: () {
-                      QuestionEditorDialog.show(
-                        context,
-                        onSave: (question, isNew) =>
-                            controller.addQuestion(s.id, question),
-                      );
-                    },
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Add Question'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                    ),
-                  );
+                  final addButton = canManage
+                      ? ElevatedButton.icon(
+                          onPressed: () {
+                            QuestionEditorDialog.show(
+                              context,
+                              onSave: (question, isNew) =>
+                                  controller.addQuestion(s.id, question),
+                            );
+                          },
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text('Add Question'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                          ),
+                        )
+                      : const SizedBox();
 
                   if (compact) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         title,
-                        const SizedBox(height: 12),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: addButton,
-                        ),
+                        if (canManage) ...[
+                          const SizedBox(height: 12),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: addButton,
+                          ),
+                        ],
                       ],
                     );
                   }
@@ -102,8 +111,10 @@ class QuestionsPane extends GetView<AdminScreenerController> {
                   return Row(
                     children: [
                       Expanded(child: title),
-                      const SizedBox(width: 16),
-                      addButton,
+                      if (canManage) ...[
+                        const SizedBox(width: 16),
+                        addButton,
+                      ],
                     ],
                   );
                 },
@@ -180,45 +191,55 @@ class _QuestionCard extends GetView<AdminScreenerController> {
 
   @override
   Widget build(BuildContext context) {
-    final actions = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Switch(
-          value: question.isActive,
-          activeTrackColor: AppColors.primary,
-          onChanged: (val) =>
-              controller.toggleQuestionActive(screenerId, question.id, val),
-        ),
-        IconButton(
-          icon: const Icon(Icons.edit_outlined, size: 18),
-          tooltip: 'Edit Question',
-          onPressed: () {
-            QuestionEditorDialog.show(
-              context,
-              question: question,
-              onSave: (updated, isNew) =>
-                  controller.updateQuestion(screenerId, updated),
-            );
-          },
-        ),
-        IconButton(
-          icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-          tooltip: 'Delete Question',
-          onPressed: () async {
-            final confirmed = await showConfirmDialog(
-              context,
-              title: 'Delete Question',
-              message: 'Are you sure you want to delete question #$index?',
-              confirmLabel: 'Delete',
-              danger: true,
-            );
-            if (confirmed) {
-              await controller.deleteQuestion(screenerId, question.id);
-            }
-          },
-        ),
-      ],
-    );
+    final bool canManage = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageContent
+        : true;
+    final bool isSuper = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageAdmins
+        : true;
+
+    final actions = canManage
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Switch(
+                value: question.isActive,
+                activeTrackColor: AppColors.primary,
+                onChanged: (val) =>
+                    controller.toggleQuestionActive(screenerId, question.id, val),
+              ),
+              IconButton(
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                tooltip: 'Edit Question',
+                onPressed: () {
+                  QuestionEditorDialog.show(
+                    context,
+                    question: question,
+                    onSave: (updated, isNew) =>
+                        controller.updateQuestion(screenerId, updated),
+                  );
+                },
+              ),
+              if (isSuper)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                  tooltip: 'Delete Question',
+                  onPressed: () async {
+                    final confirmed = await showConfirmDialog(
+                      context,
+                      title: 'Delete Question',
+                      message: 'Are you sure you want to delete question #$index?',
+                      confirmLabel: 'Delete',
+                      danger: true,
+                    );
+                    if (confirmed) {
+                      await controller.deleteQuestion(screenerId, question.id);
+                    }
+                  },
+                ),
+            ],
+          )
+        : const SizedBox();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -245,10 +266,11 @@ class _QuestionCard extends GetView<AdminScreenerController> {
           final content = Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Padding(
-                padding: EdgeInsets.only(top: 2, right: 10),
-                child: Icon(Icons.drag_indicator, size: 20, color: Colors.grey),
-              ),
+              if (canManage)
+                const Padding(
+                  padding: EdgeInsets.only(top: 2, right: 10),
+                  child: Icon(Icons.drag_indicator, size: 20, color: Colors.grey),
+                ),
               Container(
                 width: 26,
                 height: 26,
@@ -281,8 +303,10 @@ class _QuestionCard extends GetView<AdminScreenerController> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 content,
-                const SizedBox(height: 8),
-                Align(alignment: Alignment.centerRight, child: actions),
+                if (canManage) ...[
+                  const SizedBox(height: 8),
+                  Align(alignment: Alignment.centerRight, child: actions),
+                ],
               ],
             );
           }
@@ -290,8 +314,10 @@ class _QuestionCard extends GetView<AdminScreenerController> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(child: content),
-              const SizedBox(width: 8),
-              actions,
+              if (canManage) ...[
+                const SizedBox(width: 8),
+                actions,
+              ],
             ],
           );
         },

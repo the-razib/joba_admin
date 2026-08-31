@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/features/premium/models/premium.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/utils/format.dart';
 import 'package:joba_admin/core/widgets/adaptive_data_table.dart';
 import 'package:joba_admin/features/premium/controllers/premium_controller.dart';
+import 'package:joba_admin/features/premium/models/premium.dart';
 
 /// Card containing the data table for active & inactive Promo Codes.
 class PremiumPromosTable extends GetView<PremiumController> {
@@ -13,6 +14,10 @@ class PremiumPromosTable extends GetView<PremiumController> {
 
   @override
   Widget build(BuildContext context) {
+    final bool canManage = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageContent
+        : true;
+
     return Card(
       child: AdaptiveDataTable<PromoCode>(
         rows: controller.promos,
@@ -52,7 +57,7 @@ class PremiumPromosTable extends GetView<PremiumController> {
                 value: p.active,
                 activeThumbColor: AppColors.primary,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                onChanged: (_) => controller.togglePromo(p.code),
+                onChanged: canManage ? (_) => controller.togglePromo(p.code) : null,
               ),
             ],
           ),
@@ -119,7 +124,7 @@ class PremiumPromosTable extends GetView<PremiumController> {
               value: p.active,
               activeThumbColor: AppColors.primary,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              onChanged: (_) => controller.togglePromo(p.code),
+              onChanged: canManage ? (_) => controller.togglePromo(p.code) : null,
             ),
           ),
         ],

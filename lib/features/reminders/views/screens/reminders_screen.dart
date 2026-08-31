@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/theme/responsive.dart';
 import 'package:joba_admin/core/widgets/page_header.dart';
 import 'package:joba_admin/features/reminders/controllers/reminders_controller.dart';
@@ -21,6 +22,10 @@ class RemindersScreen extends GetView<RemindersController> {
         return const Center(child: CircularProgressIndicator());
       }
       final isDesktop = Responsive.isDesktop(context);
+      final bool canManage = Get.isRegistered<AuthService>()
+          ? Get.find<AuthService>().canManageContent
+          : true;
+
       return SingleChildScrollView(
         padding: EdgeInsets.all(Responsive.isMobile(context) ? 14 : 20),
         child: Center(
@@ -29,12 +34,12 @@ class RemindersScreen extends GetView<RemindersController> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const PageHeader(
+                PageHeader(
                   title: 'Reminder Tracker',
                   subtitle:
                       'Control the order every user sees their pad, '
                       'period preparation and medicine reminders in.',
-                  actions: [RemindersHeaderActions()],
+                  actions: canManage ? const [RemindersHeaderActions()] : const [],
                 ),
                 const SizedBox(height: 16),
                 const RemindersStatsGrid(),

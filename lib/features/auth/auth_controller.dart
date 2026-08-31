@@ -17,7 +17,7 @@ class AuthController extends GetxController {
     if (!(formKey.currentState?.validate() ?? false)) return;
     loading.value = true;
     final result = await auth.login(
-      emailController.text,
+      emailController.text.trim(),
       passwordController.text,
     );
     loading.value = false;
@@ -34,12 +34,5 @@ class AuthController extends GetxController {
   void fillCredentials(String email, String password) {
     emailController.text = email;
     passwordController.text = password;
-  }
-
-  @override
-  void onClose() {
-    emailController.dispose();
-    passwordController.dispose();
-    super.onClose();
   }
 }

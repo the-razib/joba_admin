@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/features/disease_checkup/models/screener_admin_model.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/features/disease_checkup/controllers/admin_screener_controller.dart';
+import 'package:joba_admin/features/disease_checkup/models/screener_admin_model.dart';
 import 'package:joba_admin/features/disease_checkup/views/widgets/risk_tier_editor_dialog.dart';
 
 class RiskTiersPane extends GetView<AdminScreenerController> {
@@ -188,17 +189,23 @@ class _RiskTierCard extends GetView<AdminScreenerController> {
         ),
       ),
     );
-    final edit = IconButton(
-      icon: const Icon(Icons.edit_outlined, size: 18),
-      tooltip: 'Edit Doctor Guidance',
-      onPressed: () {
-        RiskTierEditorDialog.show(
-          context,
-          tier: tier,
-          onSave: (updated) => controller.updateRiskTier(screenerId, updated),
-        );
-      },
-    );
+    final bool canManage = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageContent
+        : true;
+
+    final edit = canManage
+        ? IconButton(
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            tooltip: 'Edit Doctor Guidance',
+            onPressed: () {
+              RiskTierEditorDialog.show(
+                context,
+                tier: tier,
+                onSave: (updated) => controller.updateRiskTier(screenerId, updated),
+              );
+            },
+          )
+        : const SizedBox();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),

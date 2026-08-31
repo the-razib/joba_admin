@@ -1,53 +1,149 @@
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/core/repositories/admin_repository.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/features/admin_management/models/admin_profile.dart';
 import 'package:joba_admin/features/admin_management/models/admin_user.dart';
-import 'package:joba_admin/core/services/auth_service.dart';
-import 'package:uuid/uuid.dart';
 
 class AdminManagementController extends GetxController {
+  final AdminRepository adminRepo = Get.find<AdminRepository>();
+  final AuthService authService = Get.find<AuthService>();
+
   final admins = <AdminProfile>[].obs;
+  final isLoading = false.obs;
+  final isSubmitting = false.obs;
 
   bool get canManageAdmins =>
-      Get.find<AuthService>().user.value?.role == AdminRole.superAdmin;
+      authService.user.value?.role == AdminRole.superAdmin;
+
+  String? get currentUid => authService.user.value?.uid;
 
   @override
   void onInit() {
     super.onInit();
-    final now = DateTime.now();
-    admins.assignAll([
-      AdminProfile(uid: 'adm-001', name: 'Md. Razib Hasan', email: 'admin@joba.app', role: AdminRole.superAdmin, lastActive: now.subtract(const Duration(minutes: 4))),
-      AdminProfile(uid: 'adm-002', name: 'Farha Islam', email: 'editor@joba.app', role: AdminRole.editor, lastActive: now.subtract(const Duration(hours: 2))),
-      AdminProfile(uid: 'adm-003', name: 'Sakib Ahmed', email: 'viewer@joba.app', role: AdminRole.viewer, lastActive: now.subtract(const Duration(days: 1))),
-      AdminProfile(uid: 'adm-004', name: 'Tanvir Hasan', email: 'tanvir@joba.app', role: AdminRole.editor, lastActive: now.subtract(const Duration(days: 3)), active: false),
-      AdminProfile(uid: 'adm-005', name: 'Moumita Rahi', email: 'moumita@joba.app', role: AdminRole.viewer, lastActive: now.subtract(const Duration(hours: 26))),
-    ]);
+    loadAdmins();
   }
 
-  void invite({
+  Future<void> loadAdmins() async {
+    isLoading.value = true;
+    try {
+      final list = await adminRepo.listAdmins();
+      admins.assignAll(list);
+    } catch (e) {
+      debugPrint('Error loading admins: $e');
+      AppToast.error('Failed to load admins', e.toString());
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<InviteAdminResult?> invite({
     required String name,
     required String email,
     required AdminRole role,
-  }) {
-    admins.insert(
-      0,
-      AdminProfile(
-        uid: const Uuid().v4().substring(0, 8),
+    String? tempPassword,
+  }) async {
+    isSubmitting.value = true;
+    try {
+      final result = await adminRepo.inviteAdmin(
         name: name,
         email: email,
         role: role,
-        lastActive: DateTime.now(),
-        active: false, // activated on first sign-in (Phase 3)
-      ),
-    );
+        tempPassword: tempPassword,
+      );
+
+      await loadAdmins();
+      return result;
+    } catch (e) {
+      debugPrint('Error inviting admin: $e');
+      AppToast.error('Invite Failed', e.toString());
+      return null;
+    } finally {
+      isSubmitting.value = false;
+    }
   }
 
-  void setRole(String uid, AdminRole role) {
-    final i = admins.indexWhere((a) => a.uid == uid);
-    if (i >= 0) admins[i] = admins[i].copyWith(role: role);
+  Future<bool> setRole(String uid, AdminRole newRole) async {
+    final target = admins.firstWhereOrNull((a) => a.uid == uid);
+    if (target == null) return false;
+    if (target.role == newRole) return true;
+
+    // Last Super Admin Demotion Guard
+    if (target.role == AdminRole.superAdmin && newRole != AdminRole.superAdmin) {
+      final activeSuperAdmins = admins
+          .where((a) => a.role == AdminRole.superAdmin && a.active)
+          .length;
+      if (activeSuperAdmins <= 1) {
+        AppToast.error(
+          'Action Blocked',
+          'Cannot demote the last active Super Admin.',
+        );
+        return false;
+      }
+    }
+
+    try {
+      await adminRepo.setRole(targetUid: uid, role: newRole);
+      final index = admins.indexWhere((a) => a.uid == uid);
+      if (index >= 0) {
+        admins[index] = admins[index].copyWith(role: newRole);
+      }
+      AppToast.success(
+        'Role Updated',
+        'Updated role for ${target.name} to ${newRole.label}.',
+      );
+      return true;
+    } catch (e) {
+      debugPrint('Error setting role: $e');
+      AppToast.error('Failed to Update Role', e.toString());
+      return false;
+    }
   }
 
-  void toggleActive(String uid) {
-    final i = admins.indexWhere((a) => a.uid == uid);
-    if (i >= 0) admins[i] = admins[i].copyWith(active: !admins[i].active);
+  Future<bool> toggleActive(String uid) async {
+    final target = admins.firstWhereOrNull((a) => a.uid == uid);
+    if (target == null) return false;
+
+    // Self-Deactivation Guard
+    if (currentUid != null && currentUid == uid && target.active) {
+      AppToast.error(
+        'Action Blocked',
+        'You cannot deactivate your own admin account.',
+      );
+      return false;
+    }
+
+    // Last Super Admin Deactivation Guard
+    if (target.active && target.role == AdminRole.superAdmin) {
+      final activeSuperAdmins = admins
+          .where((a) => a.role == AdminRole.superAdmin && a.active)
+          .length;
+      if (activeSuperAdmins <= 1) {
+        AppToast.error(
+          'Action Blocked',
+          'Cannot deactivate the last active Super Admin.',
+        );
+        return false;
+      }
+    }
+
+    final newActive = !target.active;
+    try {
+      await adminRepo.setActive(uid, newActive);
+      final index = admins.indexWhere((a) => a.uid == uid);
+      if (index >= 0) {
+        admins[index] = admins[index].copyWith(active: newActive);
+      }
+      AppToast.success(
+        newActive ? 'Admin Enabled' : 'Admin Disabled',
+        '${target.name} has been ${newActive ? 'enabled' : 'disabled'}.',
+      );
+      return true;
+    } catch (e) {
+      debugPrint('Error toggling active status: $e');
+      AppToast.error('Failed to Update Status', e.toString());
+      return false;
+    }
   }
 }

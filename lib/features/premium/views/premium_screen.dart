@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/theme/responsive.dart';
 import 'package:joba_admin/core/widgets/page_header.dart';
 import 'package:joba_admin/features/premium/controllers/premium_controller.dart';
@@ -16,6 +17,10 @@ class PremiumScreen extends GetView<PremiumController> {
 
   @override
   Widget build(BuildContext context) {
+    final bool canManage = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageContent
+        : true;
+
     return Obx(() {
       if (controller.loading.value) {
         return const Center(child: CircularProgressIndicator());
@@ -31,15 +36,17 @@ class PremiumScreen extends GetView<PremiumController> {
                 PageHeader(
                   title: 'Premium & Payments',
                   subtitle: 'Subscriptions, promo codes and transactions',
-                  actions: [
-                    ElevatedButton.icon(
-                      onPressed: () => CreatePromoDialog.show(context),
-                      icon: const Icon(Icons.add, size: 17),
-                      label: Responsive.isMobile(context)
-                          ? const SizedBox()
-                          : const Text('Create Promo Code'),
-                    ),
-                  ],
+                  actions: canManage
+                      ? [
+                          ElevatedButton.icon(
+                            onPressed: () => CreatePromoDialog.show(context),
+                            icon: const Icon(Icons.add, size: 17),
+                            label: Responsive.isMobile(context)
+                                ? const SizedBox()
+                                : const Text('Create Promo Code'),
+                          ),
+                        ]
+                      : const [],
                 ),
                 const SizedBox(height: 16),
                 const PremiumStatsGrid(),

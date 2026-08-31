@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/theme/responsive.dart';
@@ -11,6 +12,10 @@ class ArticlesWorkspaceHeader extends GetView<ArticlesController> {
 
   @override
   Widget build(BuildContext context) {
+    final bool canManage = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageContent
+        : true;
+
     return Obx(
       () => Row(
         children: [
@@ -20,7 +25,7 @@ class ArticlesWorkspaceHeader extends GetView<ArticlesController> {
             onSelected: (i) => controller.tab.value = i,
           ),
           const Spacer(),
-          if (controller.tab.value == 0)
+          if (controller.tab.value == 0 && canManage)
             ElevatedButton.icon(
               onPressed: controller.startAdd,
               icon: const Icon(Icons.add, size: 17),

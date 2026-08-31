@@ -57,10 +57,10 @@ class AuthService extends GetxService {
   }
 
   Future<void> _loadUserProfile(User fbUser) async {
+    AdminRole? claimRole;
     try {
       final tokenResult = await fbUser.getIdTokenResult();
       final claimRoleStr = tokenResult.claims?['role'];
-      AdminRole? claimRole;
       if (claimRoleStr != null) {
         claimRole = AdminRole.fromString(claimRoleStr);
       }
@@ -98,7 +98,7 @@ class AuthService extends GetxService {
         name: fbUser.displayName ??
             (fbUser.email?.split('@').first ?? 'Admin'),
         email: fbUser.email ?? '',
-        role: AdminRole.superAdmin,
+        role: claimRole ?? AdminRole.viewer,
       );
     }
   }

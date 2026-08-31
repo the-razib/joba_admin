@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/theme/responsive.dart';
 import 'package:joba_admin/features/cycle_data/controllers/cycle_data_controller.dart';
 import 'package:joba_admin/features/cycle_data/views/widgets/cycle_age_distribution_card.dart';
@@ -31,13 +32,18 @@ class CycleDataScreen extends GetView<CycleDataController> {
                 const SizedBox(height: 12),
                 const CyclePrivacyBanner(),
                 const SizedBox(height: 16),
-                Responsive.isDesktop(context)
-                    ? const Row(
+                Builder(
+                  builder: (context) {
+                    final bool isSuperAdmin = Get.isRegistered<AuthService>()
+                        ? Get.find<AuthService>().canManageAdmins
+                        : true;
+                    if (Responsive.isDesktop(context)) {
+                      return Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            flex: 3,
-                            child: Column(
+                            flex: isSuperAdmin ? 3 : 1,
+                            child: const Column(
                               children: [
                                 CycleLengthDistributionCard(),
                                 SizedBox(height: 16),
@@ -47,21 +53,28 @@ class CycleDataScreen extends GetView<CycleDataController> {
                               ],
                             ),
                           ),
-                          SizedBox(width: 16),
-                          Expanded(flex: 2, child: CycleUserLookupCard()),
+                          if (isSuperAdmin) ...[
+                            const SizedBox(width: 16),
+                            const Expanded(flex: 2, child: CycleUserLookupCard()),
+                          ],
                         ],
-                      )
-                    : const Column(
-                        children: [
-                          CycleLengthDistributionCard(),
-                          SizedBox(height: 16),
-                          CycleAgeDistributionCard(),
-                          SizedBox(height: 16),
-                          CycleGoalsCard(),
-                          SizedBox(height: 16),
-                          CycleUserLookupCard(),
+                      );
+                    }
+                    return Column(
+                      children: [
+                        const CycleLengthDistributionCard(),
+                        const SizedBox(height: 16),
+                        const CycleAgeDistributionCard(),
+                        const SizedBox(height: 16),
+                        const CycleGoalsCard(),
+                        if (isSuperAdmin) ...[
+                          const SizedBox(height: 16),
+                          const CycleUserLookupCard(),
                         ],
-                      ),
+                      ],
+                    );
+                  },
+                ),
               ],
             ),
           ),

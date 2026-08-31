@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/features/avatars/models/avatar_item.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/widgets/avatar_circle.dart';
 import 'package:joba_admin/core/widgets/confirm_dialog.dart';
 import 'package:joba_admin/features/avatars/controllers/avatars_controller.dart';
+import 'package:joba_admin/features/avatars/models/avatar_item.dart';
 
 /// Card showing a single preset avatar's image, name, active switch, and delete button.
 class AvatarItemCard extends GetView<AvatarsController> {
@@ -17,6 +18,12 @@ class AvatarItemCard extends GetView<AvatarsController> {
   Widget build(BuildContext context) {
     final palette = context.palette;
     final a = avatar;
+    final bool canManage = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageContent
+        : true;
+    final bool isSuper = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageAdmins
+        : true;
 
     return Card(
       child: Padding(
@@ -65,33 +72,34 @@ class AvatarItemCard extends GetView<AvatarsController> {
                   value: a.active,
                   activeThumbColor: AppColors.primary,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  onChanged: (_) => controller.toggleActive(a.id),
+                  onChanged: canManage ? (_) => controller.toggleActive(a.id) : null,
                 ),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 28,
-                    minHeight: 28,
+                if (isSuper)
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 28,
+                      minHeight: 28,
+                    ),
+                    tooltip: 'Delete',
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      size: 16,
+                      color: AppColors.danger,
+                    ),
+                    onPressed: () async {
+                      final ok = await showConfirmDialog(
+                        context,
+                        title: 'Delete avatar?',
+                        message:
+                            'Users currently using this avatar will fall back to the default.',
+                        confirmLabel: 'Delete',
+                        danger: true,
+                      );
+                      if (ok) controller.remove(a.id);
+                    },
                   ),
-                  tooltip: 'Delete',
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    size: 16,
-                    color: AppColors.danger,
-                  ),
-                  onPressed: () async {
-                    final ok = await showConfirmDialog(
-                      context,
-                      title: 'Delete avatar?',
-                      message:
-                          'Users currently using this avatar will fall back to the default.',
-                      confirmLabel: 'Delete',
-                      danger: true,
-                    );
-                    if (ok) controller.remove(a.id);
-                  },
-                ),
               ],
             ),
           ],

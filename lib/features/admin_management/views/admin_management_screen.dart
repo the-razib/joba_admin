@@ -35,7 +35,7 @@ class AdminManagementScreen extends GetView<AdminManagementController> {
                         ),
                         label: Responsive.isMobile(context)
                             ? const SizedBox()
-                            : const Text('Invite Admin'),
+                            : const Text('Add Admin'),
                       ),
                   ],
                 ),

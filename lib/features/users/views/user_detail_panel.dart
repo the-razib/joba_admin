@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/features/users/models/app_user.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/utils/format.dart';
@@ -8,14 +8,19 @@ import 'package:joba_admin/core/widgets/avatar_circle.dart';
 import 'package:joba_admin/core/widgets/badges.dart';
 import 'package:joba_admin/core/widgets/detail_panel.dart';
 import 'package:joba_admin/features/users/controllers/users_controller.dart';
+import 'package:joba_admin/features/users/models/app_user.dart';
 
 /// Opens the user detail slide-over panel for the given user ID.
 void openUserDetail(BuildContext context, String uid) {
+  final bool canManage = Get.isRegistered<AuthService>()
+      ? Get.find<AuthService>().canManageContent
+      : true;
+
   showDetailPanel(
     context,
     title: 'User Details',
     child: UserDetailBody(uid: uid),
-    footer: UserDetailFooter(uid: uid),
+    footer: canManage ? UserDetailFooter(uid: uid) : null,
   );
 }
 
@@ -31,6 +36,9 @@ class UserDetailBody extends GetView<UsersController> {
       final u = controller.all.firstWhereOrNull((e) => e.uid == uid);
       if (u == null) return const SizedBox();
       final palette = context.palette;
+      final bool canViewCycle = Get.isRegistered<AuthService>()
+          ? Get.find<AuthService>().canManageContent
+          : true;
 
       return SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -88,54 +96,56 @@ class UserDetailBody extends GetView<UsersController> {
             _infoRow(context, 'Last active', timeAgo(u.lastActive)),
             if (u.birthYear != null)
               _infoRow(context, 'Birth year', '${u.birthYear}'),
-            const SizedBox(height: 22),
-            _sectionTitle(context, 'Cycle Summary'),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                _cycleTile(
-                  context,
-                  'Avg. Cycle',
-                  '${u.averageCycleLength} days',
-                ),
-                const SizedBox(width: 10),
-                _cycleTile(
-                  context,
-                  'Period',
-                  '${u.averagePeriodDuration} days',
-                ),
-                const SizedBox(width: 10),
-                _cycleTile(context, 'Goal', u.cycleGoal),
-              ],
-            ),
-            const SizedBox(height: 26),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.info.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
+            if (canViewCycle) ...[
+              const SizedBox(height: 22),
+              _sectionTitle(context, 'Cycle Summary'),
+              const SizedBox(height: 10),
+              Row(
                 children: [
-                  const Icon(
-                    Icons.privacy_tip_outlined,
-                    size: 18,
-                    color: AppColors.info,
+                  _cycleTile(
+                    context,
+                    'Avg. Cycle',
+                    '${u.averageCycleLength} days',
                   ),
                   const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Cycle data is sensitive health information. Every admin view and action is strictly recorded in Audit Logs.',
-                      style: TextStyle(
-                        color: palette.textSecondary,
-                        fontSize: 11.5,
-                        height: 1.5,
-                      ),
-                    ),
+                  _cycleTile(
+                    context,
+                    'Period',
+                    '${u.averagePeriodDuration} days',
                   ),
+                  const SizedBox(width: 10),
+                  _cycleTile(context, 'Goal', u.cycleGoal),
                 ],
               ),
-            ),
+              const SizedBox(height: 26),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.info.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.privacy_tip_outlined,
+                      size: 18,
+                      color: AppColors.info,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Cycle data is sensitive health information. Every admin view and action is strictly recorded in Audit Logs.',
+                        style: TextStyle(
+                          color: palette.textSecondary,
+                          fontSize: 11.5,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/core/repositories/admin_repository.dart';
 import 'package:joba_admin/core/repositories/article_repository.dart';
 import 'package:joba_admin/core/repositories/audit_log_repository.dart';
 import 'package:joba_admin/core/repositories/avatar_repository.dart';
@@ -106,31 +107,32 @@ class _AppBindings extends Bindings {
     const bool useMocks = bool.fromEnvironment('USE_MOCKS', defaultValue: false);
     final bool enableMocks = useMocks || !hasFirebase;
 
-    Get.lazyPut<UserRepository>(() => enableMocks ? MockUserRepository() : FirebaseUserRepository());
-    Get.lazyPut<ArticleRepository>(() => enableMocks ? MockArticleRepository() : MockArticleRepository());
-    Get.lazyPut<AvatarRepository>(() => enableMocks ? MockAvatarRepository() : FirebaseAvatarRepository());
-    Get.lazyPut<ReportRepository>(() => enableMocks ? MockReportRepository() : FirebaseReportRepository());
-    Get.lazyPut<AuditLogRepository>(() => enableMocks ? MockAuditLogRepository() : MockAuditLogRepository());
-    Get.lazyPut<UsageRepository>(() => enableMocks ? MockUsageRepository() : MockUsageRepository());
-    Get.lazyPut<PushRepository>(() => enableMocks ? MockPushRepository() : MockPushRepository());
-    Get.lazyPut<ScreenerRepository>(() => enableMocks ? MockScreenerRepository() : MockScreenerRepository());
-    Get.lazyPut<ConfigRepository>(() => enableMocks ? MockConfigRepository() : FirebaseConfigRepository());
+    Get.lazyPut<UserRepository>(() => enableMocks ? MockUserRepository() : FirebaseUserRepository(), fenix: true);
+    Get.lazyPut<ArticleRepository>(() => enableMocks ? MockArticleRepository() : MockArticleRepository(), fenix: true);
+    Get.lazyPut<AvatarRepository>(() => enableMocks ? MockAvatarRepository() : FirebaseAvatarRepository(), fenix: true);
+    Get.lazyPut<ReportRepository>(() => enableMocks ? MockReportRepository() : FirebaseReportRepository(), fenix: true);
+    Get.lazyPut<AuditLogRepository>(() => enableMocks ? MockAuditLogRepository() : MockAuditLogRepository(), fenix: true);
+    Get.lazyPut<UsageRepository>(() => enableMocks ? MockUsageRepository() : MockUsageRepository(), fenix: true);
+    Get.lazyPut<PushRepository>(() => enableMocks ? MockPushRepository() : MockPushRepository(), fenix: true);
+    Get.lazyPut<ScreenerRepository>(() => enableMocks ? MockScreenerRepository() : MockScreenerRepository(), fenix: true);
+    Get.lazyPut<ConfigRepository>(() => enableMocks ? MockConfigRepository() : FirebaseConfigRepository(), fenix: true);
+    Get.lazyPut<AdminRepository>(() => enableMocks ? MockAdminRepository() : FirebaseAdminRepository(), fenix: true);
 
-    Get.lazyPut(() => ShellController());
-    Get.lazyPut(() => AuthController());
-    Get.lazyPut(() => DashboardController());
-    Get.lazyPut(() => UsersController());
-    Get.lazyPut(() => AdminScreenerController());
-    Get.lazyPut(() => ArticlesController());
-    Get.lazyPut(() => AvatarsController());
-    Get.lazyPut(() => ReportsController());
-    Get.lazyPut(() => AuditLogsController());
-    Get.lazyPut(() => PushController());
-    Get.lazyPut(() => CycleDataController());
-    Get.lazyPut(() => RemindersController());
-    Get.lazyPut(() => PremiumController());
-    Get.lazyPut(() => SettingsController());
-    Get.lazyPut(() => AdminManagementController());
-    Get.lazyPut(() => UsageController());
+    Get.lazyPut(() => ShellController(), fenix: true);
+    Get.put(AuthController(), permanent: true);
+    Get.lazyPut(() => DashboardController(), fenix: true);
+    Get.lazyPut(() => UsersController(), fenix: true);
+    Get.lazyPut(() => AdminScreenerController(), fenix: true);
+    Get.lazyPut(() => ArticlesController(), fenix: true);
+    Get.lazyPut(() => AvatarsController(), fenix: true);
+    Get.lazyPut(() => ReportsController(), fenix: true);
+    Get.lazyPut(() => AuditLogsController(), fenix: true);
+    Get.lazyPut(() => PushController(), fenix: true);
+    Get.lazyPut(() => CycleDataController(), fenix: true);
+    Get.lazyPut(() => RemindersController(), fenix: true);
+    Get.lazyPut(() => PremiumController(), fenix: true);
+    Get.lazyPut(() => SettingsController(), fenix: true);
+    Get.lazyPut(() => AdminManagementController(), fenix: true);
+    Get.lazyPut(() => UsageController(), fenix: true);
   }
 }

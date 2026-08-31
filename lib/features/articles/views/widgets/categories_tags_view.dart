@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/theme/responsive.dart';
@@ -58,6 +59,9 @@ class CategoriesTagsView extends GetView<ArticlesController> {
 
   Widget _categoriesCard(BuildContext context) {
     final palette = context.palette;
+    final bool canManage = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageContent
+        : true;
 
     return Card(
       child: Padding(
@@ -90,15 +94,16 @@ class CategoriesTagsView extends GetView<ArticlesController> {
                     ],
                   ),
                 ),
-                ElevatedButton.icon(
-                  onPressed: () => AddArticleCategoryDialog.show(context),
-                  icon: const Icon(Icons.add, size: 16),
-                  label: const Text('Add Category'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
+                if (canManage)
+                  ElevatedButton.icon(
+                    onPressed: () => AddArticleCategoryDialog.show(context),
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('Add Category'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                    ),
                   ),
-                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -398,6 +403,9 @@ class CategoriesTagsView extends GetView<ArticlesController> {
   Widget _tagsCard(BuildContext context) {
     final palette = context.palette;
     final tagCtrl = TextEditingController();
+    final bool canManage = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageContent
+        : true;
 
     return Card(
       child: Padding(
@@ -418,32 +426,34 @@ class CategoriesTagsView extends GetView<ArticlesController> {
               'Tags used across articles for search & filtering in the app.',
               style: TextStyle(color: palette.textSecondary, fontSize: 11.5),
             ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: tagCtrl,
-                    decoration: const InputDecoration(
-                      hintText: 'New tag name...',
-                      isDense: true,
+            if (canManage) ...[
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: tagCtrl,
+                      decoration: const InputDecoration(
+                        hintText: 'New tag name...',
+                        isDense: true,
+                      ),
+                      onSubmitted: (v) {
+                        controller.addTag(v);
+                        tagCtrl.clear();
+                      },
                     ),
-                    onSubmitted: (v) {
-                      controller.addTag(v);
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      controller.addTag(tagCtrl.text);
                       tagCtrl.clear();
                     },
+                    child: const Text('Add'),
                   ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    controller.addTag(tagCtrl.text);
-                    tagCtrl.clear();
-                  },
-                  child: const Text('Add'),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
             const SizedBox(height: 14),
             Obx(
               () => Wrap(
@@ -453,8 +463,8 @@ class CategoriesTagsView extends GetView<ArticlesController> {
                   for (final t in controller.tags)
                     Chip(
                       label: Text(t),
-                      deleteIcon: const Icon(Icons.close, size: 14),
-                      onDeleted: () => controller.removeTag(t),
+                      deleteIcon: canManage ? const Icon(Icons.close, size: 14) : null,
+                      onDeleted: canManage ? () => controller.removeTag(t) : null,
                       backgroundColor: palette.inputFill,
                       side: BorderSide.none,
                       padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -482,6 +492,9 @@ class _CategoryRowItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Get.find<ArticlesController>();
     final palette = context.palette;
+    final bool canManage = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().canManageContent
+        : true;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -594,21 +607,23 @@ class _CategoryRowItem extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          if (canManage) ...[
+            const SizedBox(width: 10),
 
-          // Edit Category Button
-          IconButton(
-            icon: const Icon(Icons.edit_outlined, size: 18),
-            tooltip: 'Edit Category',
-            onPressed: () => AddArticleCategoryDialog.show(context, category: category),
-          ),
+            // Edit Category Button
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              tooltip: 'Edit Category',
+              onPressed: () => AddArticleCategoryDialog.show(context, category: category),
+            ),
 
-          // Active Switch
-          Switch(
-            value: category.active,
-            activeTrackColor: AppColors.primary,
-            onChanged: (_) => controller.toggleCategory(category.id),
-          ),
+            // Active Switch
+            Switch(
+              value: category.active,
+              activeTrackColor: AppColors.primary,
+              onChanged: (_) => controller.toggleCategory(category.id),
+            ),
+          ],
         ],
       ),
     );

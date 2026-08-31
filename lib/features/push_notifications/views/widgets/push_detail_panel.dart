@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/features/push_notifications/models/push_notification.dart';
+import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/utils/app_toast.dart';
@@ -9,17 +9,22 @@ import 'package:joba_admin/core/widgets/badges.dart';
 import 'package:joba_admin/core/widgets/confirm_dialog.dart';
 import 'package:joba_admin/core/widgets/detail_panel.dart';
 import 'package:joba_admin/features/push_notifications/controllers/push_controller.dart';
+import 'package:joba_admin/features/push_notifications/models/push_notification.dart';
 import 'package:joba_admin/features/push_notifications/views/widgets/notification_preview.dart';
 import 'package:joba_admin/features/push_notifications/views/widgets/push_composer.dart';
 
 /// Helper function to open the full notification campaign detail panel.
 void openPushDetailPanel(BuildContext context, String notificationId) {
+  final bool canManage = Get.isRegistered<AuthService>()
+      ? Get.find<AuthService>().canManageContent
+      : true;
+
   showDetailPanel(
     context,
     title: 'Notification Details',
     width: 480,
     child: PushDetailBody(id: notificationId),
-    footer: PushDetailFooter(id: notificationId),
+    footer: canManage ? PushDetailFooter(id: notificationId) : null,
   );
 }
 
@@ -245,6 +250,10 @@ class PushDetailFooter extends GetView<PushController> {
         );
       }
 
+      final bool isSuper = Get.isRegistered<AuthService>()
+          ? Get.find<AuthService>().canManageAdmins
+          : true;
+
       return Row(
         children: [
           Expanded(
@@ -260,32 +269,34 @@ class PushDetailFooter extends GetView<PushController> {
               label: const Text('Resend'),
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.danger,
-                side: const BorderSide(color: AppColors.danger),
-              ),
-              onPressed: () async {
-                final ok = await showConfirmDialog(
-                  context,
-                  title: 'Delete notification?',
-                  message: '"${p.titleEn}" will be removed.',
-                  confirmLabel: 'Delete',
-                  danger: true,
-                );
-                if (ok) {
-                  controller.remove(id);
-                  if (context.mounted) {
-                    Navigator.of(context, rootNavigator: true).pop();
+          if (isSuper) ...[
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.danger,
+                  side: const BorderSide(color: AppColors.danger),
+                ),
+                onPressed: () async {
+                  final ok = await showConfirmDialog(
+                    context,
+                    title: 'Delete notification?',
+                    message: '"${p.titleEn}" will be removed.',
+                    confirmLabel: 'Delete',
+                    danger: true,
+                  );
+                  if (ok) {
+                    controller.remove(id);
+                    if (context.mounted) {
+                      Navigator.of(context, rootNavigator: true).pop();
+                    }
                   }
-                }
-              },
-              icon: const Icon(Icons.delete_outline, size: 15),
-              label: const Text('Delete'),
+                },
+                icon: const Icon(Icons.delete_outline, size: 15),
+                label: const Text('Delete'),
+              ),
             ),
-          ),
+          ],
         ],
       );
     });
