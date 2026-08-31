@@ -97,11 +97,11 @@ class RemindersPreviewCard extends GetView<RemindersController> {
                           const SizedBox(width: 6),
                           const Expanded(
                             child: Text(
-                              'আজকের রিমাইন্ডার ও পরামর্শ',
+                              'রিমাইন্ডার সাজেশন',
                               style: TextStyle(
-                                color: Color(0xFF1A1D20),
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w800,
+                                 color: Color(0xFF1A1D20),
+                                 fontSize: 12.5,
+                                 fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:joba_admin/features/reminders/models/reminder_template.dart';
+import 'package:joba_admin/core/repositories/config_repository.dart';
 import 'package:joba_admin/core/repositories/user_repository.dart';
 import 'package:joba_admin/features/reminders/controllers/reminders_controller.dart';
 import 'package:joba_admin/features/reminders/views/screens/reminders_screen.dart';
@@ -11,6 +12,7 @@ void main() {
 
   setUp(() async {
     Get.put<UserRepository>(MockUserRepository());
+    Get.put<ConfigRepository>(MockConfigRepository());
     controller = Get.put(RemindersController());
     await Future<void>.delayed(Duration.zero);
   });

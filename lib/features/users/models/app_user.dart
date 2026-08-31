@@ -172,10 +172,19 @@ class AppUser {
     final remindersList = <ReminderKind>[];
     if (remindersRaw is List) {
       for (final item in remindersRaw) {
+        final itemStr = item?.toString().trim().toLowerCase();
         final kind = ReminderKind.values.firstWhereOrNull(
-          (k) => k.name == item?.toString(),
+          (k) =>
+              k.name.toLowerCase() == itemStr ||
+              (k == ReminderKind.periodPrep &&
+                  (itemStr == 'periodprep' ||
+                      itemStr == 'preparation' ||
+                      itemStr == 'period_prep' ||
+                      itemStr == 'periodpreparation')),
         );
-        if (kind != null) remindersList.add(kind);
+        if (kind != null && !remindersList.contains(kind)) {
+          remindersList.add(kind);
+        }
       }
     }
 

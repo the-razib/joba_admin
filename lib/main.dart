@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:joba_admin/core/repositories/article_repository.dart';
 import 'package:joba_admin/core/repositories/audit_log_repository.dart';
 import 'package:joba_admin/core/repositories/avatar_repository.dart';
+import 'package:joba_admin/core/repositories/config_repository.dart';
 import 'package:joba_admin/core/repositories/firebase_avatar_repository.dart';
 import 'package:joba_admin/core/repositories/firebase_report_repository.dart';
 import 'package:joba_admin/core/repositories/firebase_user_repository.dart';
@@ -113,6 +114,7 @@ class _AppBindings extends Bindings {
     Get.lazyPut<UsageRepository>(() => enableMocks ? MockUsageRepository() : MockUsageRepository());
     Get.lazyPut<PushRepository>(() => enableMocks ? MockPushRepository() : MockPushRepository());
     Get.lazyPut<ScreenerRepository>(() => enableMocks ? MockScreenerRepository() : MockScreenerRepository());
+    Get.lazyPut<ConfigRepository>(() => enableMocks ? MockConfigRepository() : FirebaseConfigRepository());
 
     Get.lazyPut(() => ShellController());
     Get.lazyPut(() => AuthController());
