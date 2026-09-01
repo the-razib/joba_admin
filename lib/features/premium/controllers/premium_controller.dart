@@ -1,10 +1,12 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/features/users/models/app_user.dart';
+import 'package:joba_admin/core/repositories/premium_repository.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/features/premium/models/premium.dart';
-import 'package:joba_admin/core/repositories/user_repository.dart';
+import 'package:joba_admin/features/users/models/app_user.dart';
 
 class PremiumController extends GetxController {
-  final UserRepository repo = Get.find();
+  final PremiumRepository repo = Get.find<PremiumRepository>();
 
   final loading = true.obs;
   final users = <AppUser>[].obs;
@@ -12,42 +14,168 @@ class PremiumController extends GetxController {
   final transactions = <Transaction>[].obs;
   final tab = 0.obs; // 0 users, 1 promos, 2 transactions
 
+  final searchController = TextEditingController();
+  final searchTick = 0.obs;
+  final page = 1.obs;
+  final pageSize = 10.obs;
+
   @override
   void onInit() {
     super.onInit();
-    _load();
+    searchController.addListener(() {
+      searchTick.value++;
+      page.value = 1;
+    });
+    ever(tab, (_) {
+      page.value = 1;
+      searchController.clear();
+    });
+    loadData();
   }
 
-  Future<void> _load() async {
+  @override
+  void onClose() {
+    searchController.dispose();
+    super.onClose();
+  }
+
+  Future<void> loadData() async {
     loading.value = true;
-    users.assignAll(
-      (await repo.seedUsers())
-          .where((u) => u.plan == UserPlan.premium)
-          .toList(),
-    );
-    final now = DateTime.now();
-    promos.assignAll([
-      PromoCode(code: 'SUMMER2026', percentOff: 20, expiresAt: now.add(const Duration(days: 26)), usedCount: 143),
-      PromoCode(code: 'WELCOME10', percentOff: 10, expiresAt: now.add(const Duration(days: 200)), usedCount: 892),
-      PromoCode(code: 'EID2026', percentOff: 25, expiresAt: now.subtract(const Duration(days: 60)), active: false, usedCount: 356),
-    ]);
-    transactions.assignAll([
-      Transaction(id: 'TX-1042', userName: 'Farhana Akter', amountBdt: 499, method: 'bKash', date: now.subtract(const Duration(days: 2))),
-      Transaction(id: 'TX-1041', userName: 'Ayesha Rahman', amountBdt: 499, method: 'Nagad', date: now.subtract(const Duration(days: 3))),
-      Transaction(id: 'TX-1039', userName: 'Tania Ahmed', amountBdt: 2499, method: 'Card', date: now.subtract(const Duration(days: 5))),
-      Transaction(id: 'TX-1036', userName: 'Sadia Islam', amountBdt: 499, method: 'bKash', date: now.subtract(const Duration(days: 6)), status: TxStatus.refunded),
-      Transaction(id: 'TX-1033', userName: 'Lima Khatun', amountBdt: 499, method: 'bKash', date: now.subtract(const Duration(days: 8)), status: TxStatus.pending),
-    ]);
-    loading.value = false;
+    try {
+      final results = await Future.wait([
+        repo.fetchPremiumUsers(),
+        repo.fetchPromos(),
+        repo.fetchTransactions(),
+      ]);
+      users.assignAll(results[0] as List<AppUser>);
+      promos.assignAll(results[1] as List<PromoCode>);
+      transactions.assignAll(results[2] as List<Transaction>);
+    } catch (e) {
+      debugPrint('Error loading premium data: $e');
+    } finally {
+      loading.value = false;
+    }
   }
 
-  int get monthlyRevenue =>
-      transactions.fold<int>(0, (a, t) => a + t.amountBdt);
+  Future<void> refreshData() => loadData();
 
-  void togglePromo(String code) {
-    final i = promos.indexWhere((p) => p.code == code);
-    if (i >= 0) promos[i] = promos[i].copyWith(active: !promos[i].active);
+  int get monthlyRevenue => transactions
+      .where((t) => t.status == TxStatus.success)
+      .fold<int>(0, (a, t) => a + t.amountBdt);
+
+  int get activePromosCount => promos.where((p) => p.active).length;
+
+  int get transactionsCount => transactions.length;
+
+  int get premiumUsersCount => users.length;
+
+  List<AppUser> get filteredUsers {
+    final q = searchController.text.trim().toLowerCase();
+    if (q.isEmpty) return users;
+    return users
+        .where((u) =>
+            u.name.toLowerCase().contains(q) ||
+            u.email.toLowerCase().contains(q))
+        .toList();
   }
 
-  void addPromo(PromoCode p) => promos.insert(0, p);
+  List<AppUser> get paginatedUsers {
+    final list = filteredUsers;
+    final start = (page.value - 1) * pageSize.value;
+    if (start >= list.length) {
+      if (list.isEmpty) return [];
+      final maxPage = (list.length / pageSize.value).ceil();
+      final adjustedStart = (maxPage - 1) * pageSize.value;
+      return list.sublist(adjustedStart);
+    }
+    final end = (start + pageSize.value).clamp(0, list.length);
+    return list.sublist(start, end);
+  }
+
+  List<PromoCode> get filteredPromos {
+    final q = searchController.text.trim().toLowerCase();
+    if (q.isEmpty) return promos;
+    return promos.where((p) => p.code.toLowerCase().contains(q)).toList();
+  }
+
+  List<PromoCode> get paginatedPromos {
+    final list = filteredPromos;
+    final start = (page.value - 1) * pageSize.value;
+    if (start >= list.length) {
+      if (list.isEmpty) return [];
+      final maxPage = (list.length / pageSize.value).ceil();
+      final adjustedStart = (maxPage - 1) * pageSize.value;
+      return list.sublist(adjustedStart);
+    }
+    final end = (start + pageSize.value).clamp(0, list.length);
+    return list.sublist(start, end);
+  }
+
+  List<Transaction> get filteredTransactions {
+    final q = searchController.text.trim().toLowerCase();
+    if (q.isEmpty) return transactions;
+    return transactions
+        .where((t) =>
+            t.userName.toLowerCase().contains(q) ||
+            t.id.toLowerCase().contains(q) ||
+            t.method.toLowerCase().contains(q))
+        .toList();
+  }
+
+  List<Transaction> get paginatedTransactions {
+    final list = filteredTransactions;
+    final start = (page.value - 1) * pageSize.value;
+    if (start >= list.length) {
+      if (list.isEmpty) return [];
+      final maxPage = (list.length / pageSize.value).ceil();
+      final adjustedStart = (maxPage - 1) * pageSize.value;
+      return list.sublist(adjustedStart);
+    }
+    final end = (start + pageSize.value).clamp(0, list.length);
+    return list.sublist(start, end);
+  }
+
+  Future<void> togglePromo(String code) async {
+    final idx = promos.indexWhere((p) => p.code == code);
+    if (idx >= 0) {
+      final newStatus = !promos[idx].active;
+      promos[idx] = promos[idx].copyWith(active: newStatus);
+      try {
+        await repo.togglePromo(code, newStatus);
+        AppToast.success(
+          newStatus ? 'Promo Activated' : 'Promo Deactivated',
+          'Promo code $code has been ${newStatus ? 'activated' : 'deactivated'}.',
+        );
+      } catch (e) {
+        promos[idx] = promos[idx].copyWith(active: !newStatus);
+        AppToast.error('Failed to update promo', e.toString());
+      }
+    }
+  }
+
+  Future<bool> addPromo(PromoCode p) async {
+    try {
+      await repo.createPromo(p);
+      promos.insert(0, p);
+      AppToast.success('Promo Created', 'Promo code ${p.code} created successfully.');
+      return true;
+    } catch (e) {
+      AppToast.error('Create Failed', e.toString().replaceAll('Exception: ', ''));
+      return false;
+    }
+  }
+
+  Future<void> deletePromo(String code) async {
+    final idx = promos.indexWhere((p) => p.code == code);
+    if (idx >= 0) {
+      final removed = promos.removeAt(idx);
+      try {
+        await repo.deletePromo(code);
+        AppToast.success('Promo Deleted', 'Promo code $code deleted.');
+      } catch (e) {
+        promos.insert(idx, removed);
+        AppToast.error('Delete Failed', e.toString());
+      }
+    }
+  }
 }

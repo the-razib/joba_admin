@@ -109,5 +109,22 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isEditorOrSuperAdmin();
     }
+
+    // ─── Usage Daily Analytics ───────────────────────────────────────────────
+    match /usage_daily/{date} {
+      allow read: if isAdmin();
+      allow write: if isEditorOrSuperAdmin();
+    }
+
+    // ─── Promo Codes & Transactions ──────────────────────────────────────────
+    match /promo_codes/{code} {
+      allow read: if isAuthenticated();
+      allow write: if isEditorOrSuperAdmin();
+    }
+
+    match /transactions/{txId} {
+      allow read: if isAdmin();
+      allow write: if isSuperAdmin();
+    }
   }
 }

@@ -7,13 +7,14 @@ import 'package:joba_admin/core/utils/format.dart';
 import 'package:joba_admin/core/widgets/adaptive_data_table.dart';
 import 'package:joba_admin/core/widgets/avatar_circle.dart';
 import 'package:joba_admin/core/widgets/badges.dart';
+import 'package:joba_admin/core/widgets/pagination_bar.dart';
 import 'package:joba_admin/features/admin_management/controllers/admin_management_controller.dart';
 import 'package:joba_admin/features/admin_management/models/admin_profile.dart';
 import 'package:joba_admin/features/admin_management/models/admin_user.dart';
 import 'package:joba_admin/features/admin_management/views/widgets/admin_management_mobile_card.dart';
 import 'package:joba_admin/features/admin_management/views/widgets/admin_role_badge.dart';
 
-/// Card containing the data table for managing administrator accounts and roles.
+/// Card containing the paginated data table for managing administrator accounts and roles.
 class AdminManagementTable extends GetView<AdminManagementController> {
   const AdminManagementTable({super.key});
 
@@ -62,10 +63,10 @@ class AdminManagementTable extends GetView<AdminManagementController> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('$action Admin Account'),
+        title: Text('$action Administrator'),
         content: Text(
-          'Are you sure you want to $action ${a.name} (${a.email})?\n\n'
-          '${a.active ? "They will be blocked from logging in immediately." : "They will be able to log in again."}',
+          '$action ${a.name}\'s admin access?\n\n'
+          '${a.active ? 'Disabled administrators cannot access the panel.' : 'Enabled administrators can sign in immediately.'}',
         ),
         actions: [
           TextButton(
@@ -104,174 +105,192 @@ class AdminManagementTable extends GetView<AdminManagementController> {
       }
 
       return Card(
-        child: AdaptiveDataTable<AdminProfile>(
-          rows: controller.admins,
-          cardBuilder: (context, a) => AdminManagementMobileCard(admin: a),
-          columns: [
-            AdaptiveColumn<AdminProfile>(
-              label: 'Admin',
-              flex: 3,
-              build: (context, a) => Row(
-                children: [
-                  AvatarCircle(name: a.name, size: 38),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+        child: Column(
+          children: [
+            AdaptiveDataTable<AdminProfile>(
+              rows: controller.paginated,
+              cardBuilder: (context, a) => AdminManagementMobileCard(admin: a),
+              columns: [
+                AdaptiveColumn<AdminProfile>(
+                  label: 'Admin',
+                  flex: 3,
+                  build: (context, a) => Row(
+                    children: [
+                      AvatarCircle(name: a.name, size: 28),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Flexible(
-                              child: Text(
-                                a.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: context.palette.textPrimary,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            if (isSelf(a.uid)) ...[
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 1.5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: const Text(
-                                  'You',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.primary,
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    a.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: context.palette.textPrimary,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        Text(
-                          a.email,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: context.palette.textSecondary,
-                            fontSize: 11.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            AdaptiveColumn<AdminProfile>(
-              label: 'Role',
-              flex: 2,
-              build: (context, a) => canManage
-                  ? PopupMenuButton<AdminRole>(
-                      tooltip: 'Change role',
-                      onSelected: (r) => _confirmSetRole(context, a, r),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          AdminRoleBadge(role: a.role),
-                          const Icon(
-                            Icons.keyboard_arrow_down,
-                            size: 16,
-                          ),
-                        ],
-                      ),
-                      itemBuilder: (_) => [
-                        for (final r in AdminRole.values)
-                          PopupMenuItem(
-                            value: r,
-                            child: Row(
-                              children: [
-                                Icon(r.icon, size: 16, color: r.color),
-                                const SizedBox(width: 8),
-                                Text(
-                                  r.label,
-                                  style: const TextStyle(fontSize: 13),
-                                ),
+                                if (isSelf(a.uid)) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 1.5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Text(
+                                      'You',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
-                          ),
-                      ],
-                    )
-                  : AdminRoleBadge(role: a.role),
-            ),
-            AdaptiveColumn<AdminProfile>(
-              label: 'Status',
-              flex: 2,
-              build: (context, a) => a.active
-                  ? const PillBadge(
-                      label: 'Active',
-                      color: AppColors.success,
-                    )
-                  : const PillBadge(
-                      label: 'Disabled',
-                      color: AppColors.danger,
-                    ),
-            ),
-            AdaptiveColumn<AdminProfile>(
-              label: 'Last Active',
-              flex: 2,
-              tabletHidden: true,
-              build: (context, a) => Text(
-                timeAgo(a.lastActive),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: context.palette.textSecondary,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-            AdaptiveColumn<AdminProfile>(
-              label: '',
-              width: 90,
-              align: Alignment.centerRight,
-              build: (context, a) {
-                if (!canManage) return const SizedBox();
-                final isCurrent = isSelf(a.uid);
-
-                if (isCurrent && a.active) {
-                  return Tooltip(
-                    message: 'Cannot deactivate yourself',
-                    child: TextButton(
-                      onPressed: null,
-                      child: Text(
-                        'Disable',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: context.palette.textSecondary.withValues(alpha: 0.4),
+                            Text(
+                              a.email,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: context.palette.textSecondary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  );
-                }
-
-                return TextButton(
-                  onPressed: () => _confirmToggleActive(context, a),
-                  child: Text(
-                    a.active ? 'Disable' : 'Enable',
+                    ],
+                  ),
+                ),
+                AdaptiveColumn<AdminProfile>(
+                  label: 'Role',
+                  flex: 2,
+                  build: (context, a) => canManage && !isSelf(a.uid)
+                      ? PopupMenuButton<AdminRole>(
+                          tooltip: 'Change role',
+                          initialValue: a.role,
+                          onSelected: (newRole) => _confirmSetRole(context, a, newRole),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              AdminRoleBadge(role: a.role),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.arrow_drop_down,
+                                size: 16,
+                                color: context.palette.textSecondary,
+                              ),
+                            ],
+                          ),
+                          itemBuilder: (ctx) => [
+                            for (final r in AdminRole.values)
+                              PopupMenuItem(
+                                value: r,
+                                child: Row(
+                                  children: [
+                                    AdminRoleBadge(role: r),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      r.label,
+                                      style: const TextStyle(fontSize: 13),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        )
+                      : AdminRoleBadge(role: a.role),
+                ),
+                AdaptiveColumn<AdminProfile>(
+                  label: 'Status',
+                  flex: 2,
+                  build: (context, a) => a.active
+                      ? const PillBadge(
+                          label: 'Active',
+                          color: AppColors.success,
+                        )
+                      : const PillBadge(
+                          label: 'Disabled',
+                          color: AppColors.danger,
+                        ),
+                ),
+                AdaptiveColumn<AdminProfile>(
+                  label: 'Last Active',
+                  flex: 2,
+                  tabletHidden: true,
+                  build: (context, a) => Text(
+                    timeAgo(a.lastActive),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
+                      color: context.palette.textSecondary,
                       fontSize: 12,
-                      color: a.active
-                          ? AppColors.danger
-                          : AppColors.primary,
                     ),
                   ),
-                );
-              },
+                ),
+                AdaptiveColumn<AdminProfile>(
+                  label: '',
+                  width: 90,
+                  align: Alignment.centerRight,
+                  build: (context, a) {
+                    if (!canManage) return const SizedBox();
+                    final isCurrent = isSelf(a.uid);
+
+                    if (isCurrent && a.active) {
+                      return Tooltip(
+                        message: 'Cannot deactivate yourself',
+                        child: TextButton(
+                          onPressed: null,
+                          child: Text(
+                            'Disable',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: context.palette.textSecondary.withValues(alpha: 0.4),
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+
+                    return TextButton(
+                      onPressed: () => _confirmToggleActive(context, a),
+                      child: Text(
+                        a.active ? 'Disable' : 'Enable',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: a.active
+                              ? AppColors.danger
+                              : AppColors.primary,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
+            if (controller.admins.isNotEmpty)
+              PaginationBar(
+                page: controller.page.value,
+                totalItems: controller.admins.length,
+                pageSize: controller.pageSize.value,
+                onPageChanged: (p) => controller.page.value = p,
+                onPageSizeChanged: (s) {
+                  controller.pageSize.value = s;
+                  controller.page.value = 1;
+                },
+              ),
           ],
         ),
       );

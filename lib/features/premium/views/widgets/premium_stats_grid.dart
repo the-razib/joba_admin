@@ -17,33 +17,33 @@ class PremiumStatsGrid extends GetView<PremiumController> {
         (
           Icons.workspace_premium_outlined,
           'Premium Users',
-          '${controller.users.length}',
-          10.1,
-          'vs last 7 days',
+          '${controller.premiumUsersCount}',
+          null,
+          'active subscribers',
           AppColors.warning,
         ),
         (
           Icons.payments_outlined,
-          'Revenue (30d)',
+          'Revenue (All time)',
           '৳${compactNumber(controller.monthlyRevenue)}',
-          14.8,
-          'vs last 30 days',
+          null,
+          'total gross payments',
           AppColors.primary,
         ),
         (
           Icons.local_offer_outlined,
           'Active Promos',
-          '${controller.promos.where((p) => p.active).length}',
+          '${controller.activePromosCount}',
           null,
-          '',
+          'of ${controller.promos.length} total codes',
           AppColors.accent,
         ),
         (
           Icons.receipt_outlined,
           'Transactions',
-          '${controller.transactions.length}',
-          6.2,
-          'vs last 7 days',
+          '${controller.transactionsCount}',
+          null,
+          'payment records',
           AppColors.info,
         ),
       ];
@@ -58,19 +58,22 @@ class PremiumStatsGrid extends GetView<PremiumController> {
             tablet: 4,
             desktop: 4,
           ),
-          mainAxisExtent: 104,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
+          mainAxisExtent: 110,
         ),
         itemCount: stats.length,
-        itemBuilder: (_, i) => StatCard(
-          icon: stats[i].$1,
-          label: stats[i].$2,
-          value: stats[i].$3,
-          deltaPercent: stats[i].$4,
-          compareLabel: stats[i].$5,
-          iconColor: stats[i].$6,
-        ),
+        itemBuilder: (context, i) {
+          final s = stats[i];
+          return StatCard(
+            icon: s.$1,
+            label: s.$2,
+            value: s.$3,
+            deltaPercent: s.$4,
+            compareLabel: s.$5,
+            iconColor: s.$6,
+          );
+        },
       );
     });
   }

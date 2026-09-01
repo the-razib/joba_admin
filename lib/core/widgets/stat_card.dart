@@ -66,34 +66,40 @@ class StatCard extends StatelessWidget {
                   ),
                   if (deltaPercent != null) ...[
                     const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Icon(
-                          up ? Icons.arrow_upward : Icons.arrow_downward,
-                          size: 13,
-                          color: up ? AppColors.success : AppColors.danger,
-                        ),
-                        Text(
-                          '${deltaPercent!.abs().toStringAsFixed(1)}%',
-                          style: TextStyle(
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            up ? Icons.arrow_upward : Icons.arrow_downward,
+                            size: 11,
                             color: up ? AppColors.success : AppColors.danger,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            compareLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          const SizedBox(width: 2),
+                          Text(
+                            '${deltaPercent!.abs().toStringAsFixed(0)}%',
                             style: TextStyle(
-                              color: palette.textSecondary,
+                              color: up ? AppColors.success : AppColors.danger,
                               fontSize: 11,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                        ),
-                      ],
+                          if (compareLabel.isNotEmpty) ...[
+                            const SizedBox(width: 4),
+                            Text(
+                              compareLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: palette.textSecondary,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ],
                 ],

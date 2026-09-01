@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:joba_admin/core/repositories/user_repository.dart';
+import 'package:joba_admin/core/services/audit_service.dart';
+import 'package:joba_admin/features/audit_logs/models/audit_log.dart';
 import 'package:joba_admin/features/users/models/app_user.dart';
 
 /// Production UserRepository reading and writing to Cloud Firestore collection `users`.
@@ -50,6 +52,12 @@ class FirebaseUserRepository implements UserRepository {
       'status': status.name,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+
+    AuditService.log(
+      module: 'User Management',
+      action: AuditAction.updated,
+      details: 'Updated status of user $uid to ${status.name.toUpperCase()}',
+    );
   }
 
   @override
@@ -58,10 +66,22 @@ class FirebaseUserRepository implements UserRepository {
       'plan': plan.name,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+
+    AuditService.log(
+      module: 'User Management',
+      action: AuditAction.updated,
+      details: 'Updated subscription plan of user $uid to ${plan.name.toUpperCase()}',
+    );
   }
 
   @override
   Future<void> deleteUser(String uid) async {
     await _firestore.collection(_collection).doc(uid).delete();
+
+    AuditService.log(
+      module: 'User Management',
+      action: AuditAction.deleted,
+      details: 'Permanently deleted user account $uid',
+    );
   }
 }

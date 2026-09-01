@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/features/audit_logs/models/audit_log.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/utils/format.dart';
 import 'package:joba_admin/core/widgets/adaptive_data_table.dart';
 import 'package:joba_admin/core/widgets/avatar_circle.dart';
 import 'package:joba_admin/core/widgets/badges.dart';
+import 'package:joba_admin/core/widgets/empty_state.dart';
 import 'package:joba_admin/core/widgets/filter_bar.dart';
+import 'package:joba_admin/core/widgets/pagination_bar.dart';
 import 'package:joba_admin/features/audit_logs/controllers/audit_logs_controller.dart';
+import 'package:joba_admin/features/audit_logs/models/audit_log.dart';
 import 'package:joba_admin/features/audit_logs/views/widgets/audit_action_badge.dart';
 import 'package:joba_admin/features/audit_logs/views/widgets/audit_log_detail_panel.dart';
 import 'package:joba_admin/features/audit_logs/views/widgets/audit_logs_mobile_card.dart';
 
-/// Card containing filter bar and adaptive data table for system audit and security logs.
+/// Card containing filter bar, paginated adaptive data table, and pagination bar for audit logs.
 class AuditLogsTableCard extends GetView<AuditLogsController> {
   const AuditLogsTableCard({super.key});
 
@@ -55,7 +57,13 @@ class AuditLogsTableCard extends GetView<AuditLogsController> {
           Obx(() {
             controller.searchTick.value;
             return AdaptiveDataTable<AuditLog>(
-              rows: controller.filtered,
+              rows: controller.paginated,
+              empty: const EmptyState(
+                icon: Icons.shield_outlined,
+                title: 'No audit logs found',
+                subtitle:
+                    'No administrative or security records match your search or filter criteria.',
+              ),
               onRowTap: (l) => openAuditLogDetailPanel(context, l),
               cardBuilder: (context, l) => AuditLogsMobileCard(log: l),
               columns: [
@@ -92,7 +100,7 @@ class AuditLogsTableCard extends GetView<AuditLogsController> {
                   flex: 5,
                   build: (context, l) => Row(
                     children: [
-                      AvatarCircle(name: l.adminName, size: 32),
+                      AvatarCircle(name: l.adminName, size: 28),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Column(
@@ -115,6 +123,7 @@ class AuditLogsTableCard extends GetView<AuditLogsController> {
                               style: const TextStyle(
                                 color: AppColors.primary,
                                 fontSize: 10.5,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
@@ -133,15 +142,14 @@ class AuditLogsTableCard extends GetView<AuditLogsController> {
                   flex: 3,
                   tabletHidden: true,
                   build: (context, l) => Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(
-                        Icons.apps_outlined,
-                        size: 14,
-                        color: AppColors.purple,
+                        Icons.view_quilt_outlined,
+                        size: 13,
+                        color: AppColors.primary,
                       ),
-                      const SizedBox(width: 6),
-                      Flexible(
+                      const SizedBox(width: 4),
+                      Expanded(
                         child: Text(
                           l.module,
                           maxLines: 1,
@@ -157,14 +165,15 @@ class AuditLogsTableCard extends GetView<AuditLogsController> {
                 ),
                 AdaptiveColumn<AuditLog>(
                   label: 'Details',
-                  flex: 5,
+                  flex: 6,
                   build: (context, l) => Text(
                     l.details,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: context.palette.textSecondary,
+                      color: context.palette.textPrimary,
                       fontSize: 11.5,
+                      height: 1.3,
                     ),
                   ),
                 ),
@@ -203,6 +212,20 @@ class AuditLogsTableCard extends GetView<AuditLogsController> {
                       PillBadge(label: l.status.label, color: l.status.color),
                 ),
               ],
+            );
+          }),
+          Obx(() {
+            final total = controller.filtered.length;
+            if (total == 0) return const SizedBox.shrink();
+            return PaginationBar(
+              page: controller.page.value,
+              totalItems: total,
+              pageSize: controller.pageSize.value,
+              onPageChanged: (p) => controller.page.value = p,
+              onPageSizeChanged: (s) {
+                controller.pageSize.value = s;
+                controller.page.value = 1;
+              },
             );
           }),
         ],

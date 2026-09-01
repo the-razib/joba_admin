@@ -13,6 +13,8 @@ class AdminManagementController extends GetxController {
   final admins = <AdminProfile>[].obs;
   final isLoading = false.obs;
   final isSubmitting = false.obs;
+  final page = 1.obs;
+  final pageSize = 10.obs;
 
   bool get canManageAdmins =>
       authService.user.value?.role == AdminRole.superAdmin;
@@ -36,6 +38,19 @@ class AdminManagementController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  List<AdminProfile> get paginated {
+    final list = admins.toList();
+    final start = (page.value - 1) * pageSize.value;
+    if (start >= list.length) {
+      if (list.isEmpty) return [];
+      final maxPage = (list.length / pageSize.value).ceil();
+      final adjustedStart = (maxPage - 1) * pageSize.value;
+      return list.sublist(adjustedStart);
+    }
+    final end = (start + pageSize.value).clamp(0, list.length);
+    return list.sublist(start, end);
   }
 
   Future<InviteAdminResult?> invite({
@@ -65,84 +80,46 @@ class AdminManagementController extends GetxController {
   }
 
   Future<bool> setRole(String uid, AdminRole newRole) async {
-    final target = admins.firstWhereOrNull((a) => a.uid == uid);
-    if (target == null) return false;
-    if (target.role == newRole) return true;
-
-    // Last Super Admin Demotion Guard
-    if (target.role == AdminRole.superAdmin && newRole != AdminRole.superAdmin) {
-      final activeSuperAdmins = admins
-          .where((a) => a.role == AdminRole.superAdmin && a.active)
-          .length;
-      if (activeSuperAdmins <= 1) {
-        AppToast.error(
-          'Action Blocked',
-          'Cannot demote the last active Super Admin.',
-        );
-        return false;
-      }
-    }
-
     try {
       await adminRepo.setRole(targetUid: uid, role: newRole);
-      final index = admins.indexWhere((a) => a.uid == uid);
-      if (index >= 0) {
-        admins[index] = admins[index].copyWith(role: newRole);
+      final idx = admins.indexWhere((a) => a.uid == uid);
+      if (idx != -1) {
+        admins[idx] = admins[idx].copyWith(role: newRole);
       }
-      AppToast.success(
-        'Role Updated',
-        'Updated role for ${target.name} to ${newRole.label}.',
-      );
+      AppToast.success('Role Updated', 'Admin role updated to ${newRole.label}.');
       return true;
     } catch (e) {
-      debugPrint('Error setting role: $e');
-      AppToast.error('Failed to Update Role', e.toString());
+      debugPrint('Error updating role: $e');
+      AppToast.error('Failed to update role', e.toString());
+      await loadAdmins();
       return false;
     }
   }
 
   Future<bool> toggleActive(String uid) async {
-    final target = admins.firstWhereOrNull((a) => a.uid == uid);
-    if (target == null) return false;
-
-    // Self-Deactivation Guard
-    if (currentUid != null && currentUid == uid && target.active) {
-      AppToast.error(
-        'Action Blocked',
-        'You cannot deactivate your own admin account.',
-      );
+    if (uid == currentUid) {
+      AppToast.error('Action Blocked', 'You cannot deactivate your own account.');
       return false;
     }
 
-    // Last Super Admin Deactivation Guard
-    if (target.active && target.role == AdminRole.superAdmin) {
-      final activeSuperAdmins = admins
-          .where((a) => a.role == AdminRole.superAdmin && a.active)
-          .length;
-      if (activeSuperAdmins <= 1) {
-        AppToast.error(
-          'Action Blocked',
-          'Cannot deactivate the last active Super Admin.',
-        );
-        return false;
-      }
-    }
-
-    final newActive = !target.active;
+    final a = admins.firstWhereOrNull((x) => x.uid == uid);
+    if (a == null) return false;
+    final next = !a.active;
     try {
-      await adminRepo.setActive(uid, newActive);
-      final index = admins.indexWhere((a) => a.uid == uid);
-      if (index >= 0) {
-        admins[index] = admins[index].copyWith(active: newActive);
+      await adminRepo.setActive(uid, next);
+      final idx = admins.indexWhere((x) => x.uid == uid);
+      if (idx != -1) {
+        admins[idx] = admins[idx].copyWith(active: next);
       }
       AppToast.success(
-        newActive ? 'Admin Enabled' : 'Admin Disabled',
-        '${target.name} has been ${newActive ? 'enabled' : 'disabled'}.',
+        next ? 'Account Enabled' : 'Account Disabled',
+        'Administrator account has been ${next ? 'enabled' : 'disabled'}.',
       );
       return true;
     } catch (e) {
-      debugPrint('Error toggling active status: $e');
-      AppToast.error('Failed to Update Status', e.toString());
+      debugPrint('Error toggling active state: $e');
+      AppToast.error('Failed to change status', e.toString());
+      await loadAdmins();
       return false;
     }
   }

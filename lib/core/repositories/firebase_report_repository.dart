@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:joba_admin/core/repositories/report_repository.dart';
+import 'package:joba_admin/core/services/audit_service.dart';
+import 'package:joba_admin/features/audit_logs/models/audit_log.dart';
 import 'package:joba_admin/features/reports/models/report.dart';
 
 class FirebaseReportRepository implements ReportRepository {
@@ -41,6 +43,12 @@ class FirebaseReportRepository implements ReportRepository {
       'status': status.name,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+
+    AuditService.log(
+      module: 'Reports',
+      action: AuditAction.updated,
+      details: 'Updated status of report #$id to ${status.displayName}',
+    );
   }
 
   @override
@@ -49,6 +57,12 @@ class FirebaseReportRepository implements ReportRepository {
       'priority': priority.name,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+
+    AuditService.log(
+      module: 'Reports',
+      action: AuditAction.updated,
+      details: 'Updated priority of report #$id to ${priority.name.toUpperCase()}',
+    );
   }
 
   @override
@@ -63,5 +77,11 @@ class FirebaseReportRepository implements ReportRepository {
   @override
   Future<void> deleteReport(String id) async {
     await _firestore.collection(_collection).doc(id).delete();
+
+    AuditService.log(
+      module: 'Reports',
+      action: AuditAction.deleted,
+      details: 'Permanently deleted user report #$id',
+    );
   }
 }

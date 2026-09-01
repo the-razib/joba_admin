@@ -30,10 +30,18 @@ class UsageScreen extends GetView<UsageController> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const PageHeader(
+                PageHeader(
                   title: 'Usage & Cost',
                   subtitle: 'Firebase consumption and projected spend',
-                  actions: [UsageRangePicker()],
+                  actions: [
+                    OutlinedButton.icon(
+                      onPressed: () => controller.refreshUsage(),
+                      icon: const Icon(Icons.refresh_outlined, size: 16),
+                      label: mobile ? const SizedBox() : const Text('Refresh'),
+                    ),
+                    const SizedBox(width: 8),
+                    const UsageRangePicker(),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 const UsageOutlookBanner(),

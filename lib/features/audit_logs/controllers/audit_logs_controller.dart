@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:joba_admin/features/audit_logs/models/audit_log.dart';
 import 'package:joba_admin/core/repositories/audit_log_repository.dart';
+import 'package:joba_admin/features/audit_logs/models/audit_log.dart';
 
 class AuditLogsController extends GetxController {
-  final AuditLogRepository repo = Get.find();
+  final AuditLogRepository repo = Get.find<AuditLogRepository>();
 
   final loading = true.obs;
   final all = <AuditLog>[].obs;
@@ -12,18 +12,34 @@ class AuditLogsController extends GetxController {
   final searchTick = 0.obs;
   final moduleFilter = 'All Modules'.obs;
   final actionFilter = 'All Actions'.obs;
+  final page = 1.obs;
+  final pageSize = 10.obs;
 
   @override
   void onInit() {
     super.onInit();
-    _load();
+    searchController.addListener(() {
+      searchTick.value++;
+      page.value = 1;
+    });
+    ever(moduleFilter, (_) => page.value = 1);
+    ever(actionFilter, (_) => page.value = 1);
+    loadLogs();
   }
 
-  Future<void> _load() async {
+  Future<void> loadLogs() async {
     loading.value = true;
-    all.assignAll(await repo.seedLogs());
-    loading.value = false;
+    try {
+      final logs = await repo.fetchLogs(limit: 200);
+      all.assignAll(logs);
+    } catch (_) {
+      all.clear();
+    } finally {
+      loading.value = false;
+    }
   }
+
+  Future<void> refreshLogs() => loadLogs();
 
   @override
   void onClose() {
@@ -33,7 +49,7 @@ class AuditLogsController extends GetxController {
 
   List<String> get modules => [
     'All Modules',
-    ...all.map((l) => l.module).toSet().toList()..sort(),
+    ...all.map((l) => l.module).where((m) => m.isNotEmpty).toSet().toList()..sort(),
   ];
 
   static const actionOptions = [
@@ -77,12 +93,49 @@ class AuditLogsController extends GetxController {
     return list;
   }
 
+  List<AuditLog> get paginated {
+    final list = filtered;
+    final start = (page.value - 1) * pageSize.value;
+    if (start >= list.length) {
+      if (list.isEmpty) return [];
+      // Adjust page if it was out of bounds
+      final maxPage = (list.length / pageSize.value).ceil();
+      final adjustedStart = (maxPage - 1) * pageSize.value;
+      return list.sublist(adjustedStart);
+    }
+    final end = (start + pageSize.value).clamp(0, list.length);
+    return list.sublist(start, end);
+  }
+
   int countAction(AuditAction a) => all.where((l) => l.action == a).length;
 
-  int get securityEvents =>
-      all.where((l) => l.action == AuditAction.failedLogin).length;
+  int get userEventsCount =>
+      all.where((l) => l.module.toLowerCase().contains('user')).length;
+
+  int get adminActionsCount => all
+      .where((l) =>
+          l.action == AuditAction.created ||
+          l.action == AuditAction.updated ||
+          l.action == AuditAction.deleted)
+      .length;
+
+  int get securityEvents => all
+      .where((l) =>
+          l.action == AuditAction.failedLogin ||
+          l.status == AuditStatus.failed ||
+          l.module.toLowerCase().contains('auth'))
+      .length;
+
+  double get last7DaysPercent {
+    if (all.isEmpty) return 0.0;
+    final now = DateTime.now();
+    final cutoff = now.subtract(const Duration(days: 7));
+    final recent = all.where((l) => l.time.isAfter(cutoff)).length;
+    return (recent / all.length) * 100;
+  }
 
   List<double> get activityValues {
+    if (all.isEmpty) return [];
     final byDay = <int, int>{};
     for (final l in all) {
       final d = DateTime(l.time.year, l.time.month, l.time.day);
@@ -90,10 +143,11 @@ class AuditLogsController extends GetxController {
           (byDay[d.millisecondsSinceEpoch] ?? 0) + 1;
     }
     final days = <int>[...byDay.keys]..sort();
-    return days.map((d) => (byDay[d] ?? 0) * 900.0).toList();
+    return days.map((d) => (byDay[d] ?? 0).toDouble()).toList();
   }
 
   List<String> get activityLabels {
+    if (all.isEmpty) return [];
     final days = <int>[
       for (final l in all)
         DateTime(l.time.year, l.time.month, l.time.day).millisecondsSinceEpoch,

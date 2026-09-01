@@ -1,9 +1,9 @@
 import 'package:get/get.dart';
-import 'package:joba_admin/features/usage/models/usage_metrics.dart';
 import 'package:joba_admin/core/repositories/usage_repository.dart';
+import 'package:joba_admin/features/usage/models/usage_metrics.dart';
 
 class UsageController extends GetxController {
-  final UsageRepository repo = Get.find();
+  final UsageRepository repo = Get.find<UsageRepository>();
 
   static const ranges = [7, 30, 90];
 
@@ -15,14 +15,23 @@ class UsageController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _load();
+    loadUsage();
   }
 
-  Future<void> _load() async {
+  Future<void> loadUsage() async {
     loading.value = true;
-    daily.assignAll(await repo.seedDailyUsage());
-    loading.value = false;
+    try {
+      final days = await repo.fetchDailyUsage(days: 90);
+      daily.assignAll(days);
+    } catch (_) {
+      final fallback = await repo.seedDailyUsage();
+      daily.assignAll(fallback);
+    } finally {
+      loading.value = false;
+    }
   }
+
+  Future<void> refreshUsage() => loadUsage();
 
   void setRange(int days) => rangeDays.value = days;
 
@@ -34,6 +43,8 @@ class UsageController extends GetxController {
   }
 
   UsageDay? get latest => daily.isEmpty ? null : daily.last;
+
+  DateTime? get lastUpdated => latest?.date;
 
   /// The window immediately before [window], used for period-over-period
   /// deltas. Empty when there is not enough history to compare fairly.
@@ -153,7 +164,7 @@ class UsageController extends GetxController {
         unitIsBytes: false,
       ),
       QuotaLine(
-        label: 'Firestore stored',
+        label: 'Stored data',
         used: d.firestoreStoredBytes,
         limit: FirestoreFreeQuota.storedBytes,
         unitIsBytes: true,
@@ -161,18 +172,37 @@ class UsageController extends GetxController {
     ];
   }
 
-  /// Window spend split by service, largest first.
+  /// Breakdown of spend by individual service over the selected window.
   List<(FirebaseService, double)> get serviceCosts {
-    final out = [
+    final w = window;
+    final p = pricing.value;
+    return [
       for (final s in FirebaseService.values)
-        (
-          s,
-          window.fold<double>(
-            0,
-            (a, d) => a + d.costForService(s, pricing.value),
-          ),
-        ),
-    ]..sort((a, b) => b.$2.compareTo(a.$2));
-    return out.where((e) => e.$2 > 0).toList();
+        if (s != FirebaseService.auth)
+          (s, w.fold(0.0, (a, e) => a + e.costForService(s, p))),
+    ].where((e) => e.$2 > 0).toList();
+  }
+
+  /// Share of spend by service over the selected window.
+  Map<FirebaseService, double> get serviceSpend {
+    final w = window;
+    final p = pricing.value;
+    final map = <FirebaseService, double>{};
+    for (final s in FirebaseService.values) {
+      map[s] = w.fold(0.0, (a, e) => a + e.costForService(s, p));
+    }
+    return map;
+  }
+
+  /// Verdict banner copy: free-tier status, estimated invoice, and drivers.
+  String get plainLanguageVerdict {
+    final projected = projectedMonthCost;
+    if (projected < 0.01) {
+      return 'Joba is operating fully within Firebase free quotas. Projected monthly bill: \$0.00.';
+    }
+    if (projected < 5.0) {
+      return 'Minimal paid consumption. Projected monthly bill is approximately \$${projected.toStringAsFixed(2)}, driven mostly by Firestore document reads.';
+    }
+    return 'Active paid consumption. Projected monthly bill is approximately \$${projected.toStringAsFixed(2)}. Storage and document reads are the primary drivers.';
   }
 }

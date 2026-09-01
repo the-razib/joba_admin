@@ -5,45 +5,51 @@ import 'package:joba_admin/core/theme/responsive.dart';
 import 'package:joba_admin/core/widgets/stat_card.dart';
 import 'package:joba_admin/features/audit_logs/controllers/audit_logs_controller.dart';
 
-/// Responsive grid of 4 KPI statistics for Audit & Security Logs.
+/// Responsive grid of 4 dynamic KPI statistics for Audit & Security Logs.
 class AuditLogsStatsGrid extends GetView<AuditLogsController> {
   const AuditLogsStatsGrid({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Obx(() {
+      final total = controller.all.length;
+      final userOps = controller.userEventsCount;
+      final adminOps = controller.adminActionsCount;
+      final securityOps = controller.securityEvents;
+      final pct7d = controller.last7DaysPercent;
+
       final stats = [
         (
           Icons.receipt_long_outlined,
           'Total Logs',
-          '18,742',
-          18.6,
-          'vs last 7 days',
+          '$total',
+          pct7d > 0 ? pct7d : null,
+          pct7d > 0 ? 'last 7 days' : 'all records',
           AppColors.primary,
         ),
         (
           Icons.group_outlined,
-          'Users',
-          '6,421',
-          12.4,
-          'vs last 7 days',
+          'User Events',
+          '$userOps',
+          total > 0 ? (userOps / total) * 100 : null,
+          'of total logs',
           AppColors.purple,
         ),
         (
           Icons.settings_outlined,
-          'Admin Actions',
-          '9,356',
-          15.3,
-          'vs last 7 days',
+          'Admin Mutations',
+          '$adminOps',
+          total > 0 ? (adminOps / total) * 100 : null,
+          'of total logs',
           AppColors.warning,
         ),
         (
           Icons.verified_user_outlined,
           'Security Events',
-          '${controller.securityEvents + 960}',
-          22.7,
-          'vs last 7 days',
-          AppColors.info,
+          '$securityOps',
+          total > 0 ? (securityOps / total) * 100 : null,
+          'of total logs',
+          securityOps > 0 ? AppColors.danger : AppColors.info,
         ),
       ];
 

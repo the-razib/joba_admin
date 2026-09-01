@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:joba_admin/core/theme/responsive.dart';
+import 'package:joba_admin/core/widgets/page_header.dart';
 import 'package:joba_admin/features/audit_logs/controllers/audit_logs_controller.dart';
 import 'package:joba_admin/features/audit_logs/views/widgets/audit_logs_sidebar.dart';
 import 'package:joba_admin/features/audit_logs/views/widgets/audit_logs_stats_grid.dart';
@@ -24,6 +25,20 @@ class AuditLogsScreen extends GetView<AuditLogsController> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                PageHeader(
+                  title: 'Audit Logs',
+                  subtitle: 'Security events, admin actions and audit trail',
+                  actions: [
+                    OutlinedButton.icon(
+                      onPressed: () => controller.refreshLogs(),
+                      icon: const Icon(Icons.refresh_outlined, size: 16),
+                      label: Responsive.isMobile(context)
+                          ? const SizedBox()
+                          : const Text('Refresh'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
                 const AuditLogsStatsGrid(),
                 const SizedBox(height: 16),
                 Responsive.isDesktop(context)

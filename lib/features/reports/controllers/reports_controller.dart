@@ -13,6 +13,8 @@ class ReportsController extends GetxController {
   final searchController = TextEditingController();
   final searchTick = 0.obs;
   final statusFilter = 'All Status'.obs;
+  final page = 1.obs;
+  final pageSize = 10.obs;
 
   static const typeTabs = [
     'All Reports',
@@ -26,6 +28,12 @@ class ReportsController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    searchController.addListener(() {
+      searchTick.value++;
+      page.value = 1;
+    });
+    ever(typeTab, (_) => page.value = 1);
+    ever(statusFilter, (_) => page.value = 1);
     loadReports();
   }
 
@@ -89,6 +97,21 @@ class ReportsController extends GetxController {
     return list;
   }
 
+  List<Report> get paginated {
+    final list = filtered;
+    final start = (page.value - 1) * pageSize.value;
+    if (start >= list.length) {
+      if (list.isEmpty) return [];
+      final maxPage = (list.length / pageSize.value).ceil();
+      final adjustedStart = (maxPage - 1) * pageSize.value;
+      return list.sublist(adjustedStart);
+    }
+    final end = (start + pageSize.value).clamp(0, list.length);
+    return list.sublist(start, end);
+  }
+
+  void markAsRead(String id) {}
+
   Future<void> updateStatus(String id, ReportStatus status) async {
     final i = all.indexWhere((r) => r.id == id);
     if (i >= 0) {
@@ -102,7 +125,7 @@ class ReportsController extends GetxController {
         );
       } catch (e) {
         all[i] = old;
-        AppToast.error('Update Failed', 'Could not update status: $e');
+        AppToast.error('Update Failed', 'Could not update report: $e');
       }
     }
   }
@@ -116,7 +139,7 @@ class ReportsController extends GetxController {
         await repo.updateReportPriority(id, priority);
         AppToast.success(
           'Priority Updated',
-          'Report priority set to ${priority.displayName}.',
+          'Priority changed to ${priority.displayName}.',
         );
       } catch (e) {
         all[i] = old;
@@ -125,25 +148,16 @@ class ReportsController extends GetxController {
     }
   }
 
-  Future<void> markAsRead(String id) async {
-    final i = all.indexWhere((r) => r.id == id);
-    if (i >= 0 && !all[i].isRead) {
-      all[i] = all[i].copyWith(isRead: true);
-      try {
-        await repo.markAsRead(id);
-      } catch (_) {}
-    }
-  }
-
   Future<void> deleteReport(String id) async {
     final i = all.indexWhere((r) => r.id == id);
     if (i >= 0) {
-      final removed = all.removeAt(i);
+      final old = all[i];
+      all.removeAt(i);
       try {
         await repo.deleteReport(id);
-        AppToast.success('Report Deleted', 'Report removed successfully.');
+        AppToast.success('Report Deleted', 'The report has been removed.');
       } catch (e) {
-        all.insert(i, removed);
+        all.insert(i, old);
         AppToast.error('Delete Failed', 'Could not delete report: $e');
       }
     }

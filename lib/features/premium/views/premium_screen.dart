@@ -20,13 +20,14 @@ class PremiumScreen extends GetView<PremiumController> {
     final bool canManage = Get.isRegistered<AuthService>()
         ? Get.find<AuthService>().canManageContent
         : true;
+    final mobile = Responsive.isMobile(context);
 
     return Obx(() {
       if (controller.loading.value) {
         return const Center(child: CircularProgressIndicator());
       }
       return SingleChildScrollView(
-        padding: EdgeInsets.all(Responsive.isMobile(context) ? 14 : 20),
+        padding: EdgeInsets.all(mobile ? 14 : 20),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: Responsive.contentMax),
@@ -36,17 +37,23 @@ class PremiumScreen extends GetView<PremiumController> {
                 PageHeader(
                   title: 'Premium & Payments',
                   subtitle: 'Subscriptions, promo codes and transactions',
-                  actions: canManage
-                      ? [
-                          ElevatedButton.icon(
-                            onPressed: () => CreatePromoDialog.show(context),
-                            icon: const Icon(Icons.add, size: 17),
-                            label: Responsive.isMobile(context)
-                                ? const SizedBox()
-                                : const Text('Create Promo Code'),
-                          ),
-                        ]
-                      : const [],
+                  actions: [
+                    OutlinedButton.icon(
+                      onPressed: () => controller.refreshData(),
+                      icon: const Icon(Icons.refresh_outlined, size: 16),
+                      label: mobile ? const SizedBox() : const Text('Refresh'),
+                    ),
+                    if (canManage) ...[
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        onPressed: () => CreatePromoDialog.show(context),
+                        icon: const Icon(Icons.add, size: 17),
+                        label: mobile
+                            ? const SizedBox()
+                            : const Text('Create Promo Code'),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 16),
                 const PremiumStatsGrid(),

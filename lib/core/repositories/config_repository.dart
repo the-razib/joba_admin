@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:joba_admin/core/services/audit_service.dart';
+import 'package:joba_admin/features/audit_logs/models/audit_log.dart';
 
 /// Repository interface for remote application configuration documents.
 /// Backed by the `app_config/*` collection in Firestore.
@@ -72,6 +74,12 @@ class FirebaseConfigRepository implements ConfigRepository {
         'updatedAt': FieldValue.serverTimestamp(),
       },
       SetOptions(merge: true),
+    );
+
+    AuditService.log(
+      module: 'App Settings',
+      action: AuditAction.updated,
+      details: 'Updated app configuration for $docId',
     );
   }
 }

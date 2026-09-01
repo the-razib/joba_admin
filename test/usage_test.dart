@@ -66,34 +66,50 @@ void main() {
     });
 
     test('never renders a four-digit MB value', () {
-      // The pre-existing fileSizeLabel caps at MB, which is what would make
-      // 1.6 GB of stored objects read as "1638.4 MB".
       expect(dataSizeLabel(1024 * 1024 * 1600), '1.56 GB');
     });
   });
 
+  group('UsageDay serialization', () {
+    test('round-trip serialization toMap and fromMap', () {
+      final now = DateTime(2026, 9, 1);
+      final item = UsageDay(
+        date: now,
+        reads: 5000,
+        writes: 1200,
+        deletes: 50,
+        firestoreStoredBytes: 1024 * 1024 * 10,
+        storageStoredBytes: 1024 * 1024 * 50,
+        storageObjects: 100,
+        egressBytes: 1024 * 1024 * 20,
+        functionInvocations: 800,
+      );
+
+      final map = item.toMap();
+      final deserialized = UsageDay.fromMap(map);
+
+      expect(deserialized.reads, 5000);
+      expect(deserialized.writes, 1200);
+      expect(deserialized.deletes, 50);
+      expect(deserialized.storageObjects, 100);
+    });
+  });
+
   group('UsageController projection', () {
-    test('carries the daily run rate forward instead of reporting the total '
-        'so far', () {
+    test('carries the daily run rate forward instead of reporting the total so far', () {
       final c = UsageController();
       final now = DateTime.now();
       final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
 
-      // Every day of the current month up to today, all identical.
       c.daily.assignAll([
         for (var d = 1; d <= now.day; d++)
           day(DateTime(now.year, now.month, d)),
       ]);
 
-      // Derived from the model, not the controller, so this is an independent
-      // check that the controller composes per-day cost rather than inventing
-      // its own arithmetic.
       final perDay = c.daily.first.costUsd(const FirebasePricing());
 
       expect(c.recentDailyAverage, closeTo(perDay, 1e-9));
       expect(c.monthToDateCost, closeTo(perDay * now.day, 1e-6));
-      // A flat run rate projected across the month must land on the full
-      // month's spend, whatever today's date happens to be.
       expect(c.projectedMonthCost, closeTo(perDay * daysInMonth, 1e-6));
     });
   });
@@ -132,8 +148,6 @@ void main() {
     test('a shrinking window reads as falling', () {
       final c = UsageController();
       final start = DateTime(2026, 1, 1);
-      // The prior window is daily[14..20], so the drop has to start at 21 for
-      // the comparison to straddle it.
       c.daily.assignAll([
         for (var i = 0; i < 21; i++)
           day(start.add(Duration(days: i)), reads: 400000),
@@ -155,7 +169,6 @@ void main() {
 
       final reads = c.quotas.firstWhere((q) => q.label == 'Document reads');
       expect(reads.isOver, isTrue);
-      // The bar must not run past its track even when usage does.
       expect(reads.fraction, 1.0);
     });
 
@@ -164,21 +177,18 @@ void main() {
       c.daily.assignAll([day(DateTime(2026, 1, 1))]);
 
       final services = c.serviceCosts.map((e) => e.$1);
-      // Auth has no metered cost, so showing it as a $0.000 line is noise.
       expect(services, isNot(contains(FirebaseService.auth)));
       expect(services, contains(FirebaseService.firestore));
       expect(c.serviceCosts.every((e) => e.$2 > 0), isTrue);
     });
   });
 
-  group('UsageScreen', () {
+  group('UsageScreen Widget Tests', () {
     testWidgets('answers reads, writes, storage and projected spend', (
       tester,
     ) async {
       await pumpUsage(tester);
 
-      // 'Document reads'/'Document writes' appear both as a KPI and as a
-      // free-allowance line, so match loosely on purpose.
       expect(find.text('Document reads'), findsWidgets);
       expect(find.text('Document writes'), findsWidgets);
       expect(find.text('Storage used'), findsOneWidget);
@@ -188,7 +198,6 @@ void main() {
     testWidgets('leads with a plain-language cost verdict', (tester) async {
       await pumpUsage(tester);
 
-      // The whole point of the screen: is spend going up or not.
       expect(
         find.byWidgetPredicate(
           (w) =>
@@ -200,13 +209,13 @@ void main() {
       );
     });
 
-    testWidgets('says the figures are estimates, not billed amounts', (
+    testWidgets('renders source note with live Firebase analytics info', (
       tester,
     ) async {
       await pumpUsage(tester);
 
-      expect(find.textContaining('estimated from list prices'), findsOneWidget);
-      expect(find.textContaining('sampled once daily'), findsOneWidget);
+      expect(find.textContaining('Firebase Blaze pricing'), findsOneWidget);
+      expect(find.textContaining('tracked daily'), findsOneWidget);
     });
 
     for (final size in const [
