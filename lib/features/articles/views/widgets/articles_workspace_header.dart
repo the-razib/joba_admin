@@ -15,6 +15,45 @@ class ArticlesWorkspaceHeader extends GetView<ArticlesController> {
     final bool canManage = Get.isRegistered<AuthService>()
         ? Get.find<AuthService>().canManageContent
         : true;
+    final mobile = Responsive.isMobile(context);
+
+    if (mobile) {
+      return Obx(
+        () => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _TabToggle(
+              labels: const ['Articles', 'Categories & Tags'],
+              selected: controller.tab.value,
+              onSelected: (i) => controller.tab.value = i,
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => controller.refreshData(),
+                  icon: const Icon(Icons.refresh_outlined, size: 16),
+                  label: const Text('Refresh'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  ),
+                ),
+                const Spacer(),
+                if (controller.tab.value == 0 && canManage)
+                  ElevatedButton.icon(
+                    onPressed: controller.startAdd,
+                    icon: const Icon(Icons.add, size: 17),
+                    label: const Text('Add Article'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
 
     return Obx(
       () => Row(
@@ -25,14 +64,19 @@ class ArticlesWorkspaceHeader extends GetView<ArticlesController> {
             onSelected: (i) => controller.tab.value = i,
           ),
           const Spacer(),
-          if (controller.tab.value == 0 && canManage)
+          OutlinedButton.icon(
+            onPressed: () => controller.refreshData(),
+            icon: const Icon(Icons.refresh_outlined, size: 16),
+            label: const Text('Refresh'),
+          ),
+          if (controller.tab.value == 0 && canManage) ...[
+            const SizedBox(width: 8),
             ElevatedButton.icon(
               onPressed: controller.startAdd,
               icon: const Icon(Icons.add, size: 17),
-              label: Responsive.isMobile(context)
-                  ? const SizedBox()
-                  : const Text('Add Article'),
+              label: const Text('Add Article'),
             ),
+          ],
         ],
       ),
     );
@@ -52,6 +96,8 @@ class _TabToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mobile = Responsive.isMobile(context);
+
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -59,36 +105,51 @@ class _TabToggle extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: mobile ? MainAxisSize.max : MainAxisSize.min,
         children: [
-          for (var i = 0; i < labels.length; i++)
-            InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: () => onSelected(i),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: selected == i
-                      ? context.palette.card
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  labels[i],
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: selected == i
-                        ? AppColors.primary
-                        : context.palette.textSecondary,
-                  ),
-                ),
-              ),
-            ),
+          for (var i = 0; i < labels.length; i++) ...[
+            if (mobile)
+              Expanded(
+                child: _buildItem(context, i),
+              )
+            else
+              _buildItem(context, i),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildItem(BuildContext context, int i) {
+    final mobile = Responsive.isMobile(context);
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => onSelected(i),
+      child: Container(
+        alignment: Alignment.center,
+        padding: EdgeInsets.symmetric(
+          horizontal: mobile ? 6 : 14,
+          vertical: 8,
+        ),
+        decoration: BoxDecoration(
+          color: selected == i
+              ? context.palette.card
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          labels[i],
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: mobile ? 11.5 : 12.5,
+            fontWeight: FontWeight.w600,
+            color: selected == i
+                ? AppColors.primary
+                : context.palette.textSecondary,
+          ),
+        ),
       ),
     );
   }

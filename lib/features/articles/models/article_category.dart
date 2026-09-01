@@ -52,14 +52,19 @@ class ArticleCategory {
       'name': {'bn': nameBn, 'en': nameEn},
       'nameBn': nameBn,
       'nameEn': nameEn,
+      'name_bn': nameBn,
+      'name_en': nameEn,
       'subtitle': {'bn': subtitleBn, 'en': subtitleEn},
       'subtitleBn': subtitleBn,
       'subtitleEn': subtitleEn,
+      'subtitle_bn': subtitleBn,
+      'subtitle_en': subtitleEn,
       'imagePath': imagePath,
       'imageUrl': imagePath,
       'isFullWidth': isFullWidth,
       'order': order,
       'active': active,
+      'isActive': active,
     };
   }
 
@@ -69,14 +74,28 @@ class ArticleCategory {
 
     return ArticleCategory(
       id: docId ?? map['id']?.toString() ?? '',
-      nameBn: nameMap?['bn']?.toString() ?? map['nameBn']?.toString() ?? '',
-      nameEn: nameMap?['en']?.toString() ?? map['nameEn']?.toString() ?? '',
-      subtitleBn: subtitleMap?['bn']?.toString() ?? map['subtitleBn']?.toString() ?? '',
-      subtitleEn: subtitleMap?['en']?.toString() ?? map['subtitleEn']?.toString() ?? '',
-      imagePath: map['imageUrl']?.toString() ?? map['imagePath']?.toString() ?? '',
+      nameBn: nameMap?['bn']?.toString() ??
+          map['nameBn']?.toString() ??
+          map['name_bn']?.toString() ??
+          '',
+      nameEn: nameMap?['en']?.toString() ??
+          map['nameEn']?.toString() ??
+          map['name_en']?.toString() ??
+          '',
+      subtitleBn: subtitleMap?['bn']?.toString() ??
+          map['subtitleBn']?.toString() ??
+          map['subtitle_bn']?.toString() ??
+          '',
+      subtitleEn: subtitleMap?['en']?.toString() ??
+          map['subtitleEn']?.toString() ??
+          map['subtitle_en']?.toString() ??
+          '',
+      imagePath: map['imageUrl']?.toString() ??
+          map['imagePath']?.toString() ??
+          '',
       isFullWidth: map['isFullWidth'] as bool? ?? false,
       order: (map['order'] as num?)?.toInt() ?? 0,
-      active: map['active'] as bool? ?? true,
+      active: map['active'] as bool? ?? map['isActive'] as bool? ?? true,
     );
   }
 }

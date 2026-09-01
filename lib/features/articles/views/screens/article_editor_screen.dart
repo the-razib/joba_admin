@@ -1,16 +1,21 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart' hide Value;
-import 'package:joba_admin/features/articles/models/article.dart';
 import 'package:joba_admin/core/theme/responsive.dart';
 import 'package:joba_admin/core/utils/app_toast.dart';
+import 'package:joba_admin/core/utils/reading_time_calculator.dart';
+import 'package:joba_admin/core/widgets/audio_upload_field.dart';
+import 'package:joba_admin/core/widgets/confirm_dialog.dart';
+import 'package:joba_admin/core/widgets/image_upload_field.dart';
 import 'package:joba_admin/features/articles/controllers/articles_controller.dart';
+import 'package:joba_admin/features/articles/models/article.dart';
 import 'package:joba_admin/features/articles/views/widgets/article_editor_bilingual_section.dart';
 import 'package:joba_admin/features/articles/views/widgets/article_editor_media_section.dart';
 import 'package:joba_admin/features/articles/views/widgets/article_editor_medical_section.dart';
 import 'package:joba_admin/features/articles/views/widgets/article_editor_settings_sidebar.dart';
 
-/// Bilingual article editor screen: BN + EN titles/subtitles/content, thumbnail,
-/// per-language audio uploads, medical reviewer verification, tags, publishing and SEO settings.
+/// Bilingual article editor screen with dirty-checking, publishing validation,
+/// BN + EN titles/subtitles/content, thumbnail, audio uploads, reviewer verification, tags, and SEO settings.
 class ArticleEditorScreen extends StatefulWidget {
   const ArticleEditorScreen({
     super.key,
@@ -52,6 +57,17 @@ class _ArticleEditorScreenState extends State<ArticleEditorScreen> {
   late String? _audioBn;
   late String? _audioEn;
 
+  ImagePick? _pickedImage;
+  AudioPick? _pickedAudioBn;
+  AudioPick? _pickedAudioEn;
+
+  /// True when the user removed the existing remote media — the fields fire
+  /// onChanged(null) for both "undo a fresh pick" and "remove saved media",
+  /// so removal is resolved against the article's original value.
+  bool _removedImage = false;
+  bool _removedAudioBn = false;
+  bool _removedAudioEn = false;
+
   @override
   void initState() {
     super.initState();
@@ -69,19 +85,98 @@ class _ArticleEditorScreenState extends State<ArticleEditorScreen> {
     _tagInput = TextEditingController();
     _medicalReviewerBn = TextEditingController(text: a.medicalReviewerBn);
     _medicalReviewerEn = TextEditingController(text: a.medicalReviewerEn);
-    _readingTime = TextEditingController(text: '${a.readingTimeMin}');
+    final initialCalculated = ReadingTimeCalculator.calculate(
+      contentBn: a.contentBn,
+      contentEn: a.contentEn,
+    );
+    final initialTime = (widget.isNew || a.readingTimeMin <= 0)
+        ? (initialCalculated > 0 ? initialCalculated : 1)
+        : a.readingTimeMin;
+    _readingTime = TextEditingController(text: '$initialTime');
     _categoryId = a.categoryId;
     _status = a.status;
     _featured = a.featured;
     _isMedicallyReviewed = a.isMedicallyReviewed;
     _tags = List.of(a.tags);
     _imagePath = a.imagePath.isEmpty ? null : a.imagePath;
-    _audioBn = a.audioBnPath;
-    _audioEn = a.audioEnPath;
+    _audioBn = (a.audioBnPath?.isEmpty ?? true) ? null : a.audioBnPath;
+    _audioEn = (a.audioEnPath?.isEmpty ?? true) ? null : a.audioEnPath;
+
+    _contentBn.addListener(_onContentChanged);
+    _contentEn.addListener(_onContentChanged);
+  }
+
+  void _onContentChanged() {
+    final autoMin = ReadingTimeCalculator.calculate(
+      contentBn: _contentBn.text,
+      contentEn: _contentEn.text,
+    );
+    if (autoMin > 0) {
+      _readingTime.text = '$autoMin';
+    }
+  }
+
+  bool get _isDirty {
+    final a = widget.article;
+    if (widget.isNew) {
+      return _titleBn.text.trim().isNotEmpty ||
+          _titleEn.text.trim().isNotEmpty ||
+          _contentBn.text.trim().isNotEmpty ||
+          _contentEn.text.trim().isNotEmpty ||
+          _pickedImage != null ||
+          _pickedAudioBn != null ||
+          _pickedAudioEn != null;
+    }
+    final orderVal = int.tryParse(_order.text.trim()) ?? 0;
+    final readingTimeVal = int.tryParse(_readingTime.text.trim()) ?? 3;
+    return _titleBn.text != a.titleBn ||
+        _titleEn.text != a.titleEn ||
+        _subBn.text != a.subtitleBn ||
+        _subEn.text != a.subtitleEn ||
+        _contentBn.text != a.contentBn ||
+        _contentEn.text != a.contentEn ||
+        _categoryId != a.categoryId ||
+        _status != a.status ||
+        _featured != a.featured ||
+        _isMedicallyReviewed != a.isMedicallyReviewed ||
+        _medicalReviewerBn.text != a.medicalReviewerBn ||
+        _medicalReviewerEn.text != a.medicalReviewerEn ||
+        _slug.text != a.slug ||
+        _seoTitle.text != a.seoTitle ||
+        _seoDesc.text != a.seoDescription ||
+        orderVal != a.displayOrder ||
+        readingTimeVal != a.readingTimeMin ||
+        !listEquals(_tags, a.tags) ||
+        _pickedImage != null ||
+        _pickedAudioBn != null ||
+        _pickedAudioEn != null ||
+        (_removedImage && a.imagePath.isNotEmpty) ||
+        (_removedAudioBn && (a.audioBnPath?.isNotEmpty ?? false)) ||
+        (_removedAudioEn && (a.audioEnPath?.isNotEmpty ?? false));
+  }
+
+  Future<void> _handleCancel() async {
+    if (_isDirty) {
+      final discard = await showConfirmDialog(
+        context,
+        title: 'Discard Unsaved Changes?',
+        message:
+            'You have unsaved changes in this article. Are you sure you want to leave without saving?',
+        confirmLabel: 'Discard',
+        danger: true,
+      );
+      if (discard == true) {
+        controller.closeEditor();
+      }
+    } else {
+      controller.closeEditor();
+    }
   }
 
   @override
   void dispose() {
+    _contentBn.removeListener(_onContentChanged);
+    _contentEn.removeListener(_onContentChanged);
     for (final c in [
       _titleBn,
       _titleEn,
@@ -103,23 +198,72 @@ class _ArticleEditorScreenState extends State<ArticleEditorScreen> {
     super.dispose();
   }
 
-  void _save() {
-    if (_titleBn.text.trim().isEmpty || _titleEn.text.trim().isEmpty) {
+  Future<void> _save() async {
+    final titleBnTrim = _titleBn.text.trim();
+    final titleEnTrim = _titleEn.text.trim();
+    final contentBnTrim = _contentBn.text.trim();
+    final contentEnTrim = _contentEn.text.trim();
+
+    if (titleBnTrim.isEmpty || titleEnTrim.isEmpty) {
       AppToast.warning(
-        'Missing titles',
-        'Both বাংলা and English titles are required.',
+        'Missing Titles',
+        'Both বাংলা and English titles are required to save an article.',
       );
       return;
     }
+
+    // Strong validation for publishing
+    if (_status == ArticleStatus.published) {
+      if (contentBnTrim.isEmpty || contentEnTrim.isEmpty) {
+        AppToast.warning(
+          'Incomplete Content for Publishing',
+          'To publish this article, both বাংলা and English content bodies are required. Fill in the body or save as Draft / In Review.',
+        );
+        return;
+      }
+      if (_categoryId.isEmpty) {
+        AppToast.warning(
+          'Missing Category',
+          'Please assign a category before publishing.',
+        );
+        return;
+      }
+    }
+
+    if (_pickedImage != null &&
+        (_pickedImage!.bytes == null || _pickedImage!.bytes!.isEmpty)) {
+      AppToast.warning(
+        'Cannot Read Image',
+        'Selected image could not be loaded. Please choose another file.',
+      );
+      return;
+    }
+    if (_pickedAudioBn != null &&
+        (_pickedAudioBn!.bytes == null || _pickedAudioBn!.bytes!.isEmpty)) {
+      AppToast.warning(
+        'Cannot Read Bangla Audio',
+        'Selected audio file could not be loaded.',
+      );
+      return;
+    }
+    if (_pickedAudioEn != null &&
+        (_pickedAudioEn!.bytes == null || _pickedAudioEn!.bytes!.isEmpty)) {
+      AppToast.warning(
+        'Cannot Read English Audio',
+        'Selected audio file could not be loaded.',
+      );
+      return;
+    }
+
     final orderVal = int.tryParse(_order.text.trim()) ?? 0;
     final readingTimeVal = int.tryParse(_readingTime.text.trim()) ?? 3;
     final updated = widget.article.copyWith(
-      titleBn: _titleBn.text.trim(),
-      titleEn: _titleEn.text.trim(),
+      titleBn: titleBnTrim,
+      titleEn: titleEnTrim,
       subtitleBn: _subBn.text.trim(),
       subtitleEn: _subEn.text.trim(),
-      contentBn: _contentBn.text.trim(),
-      contentEn: _contentEn.text.trim(),
+      contentBn: contentBnTrim,
+      contentEn: contentEnTrim,
       categoryId: _categoryId,
       status: _status,
       featured: _featured,
@@ -129,14 +273,41 @@ class _ArticleEditorScreenState extends State<ArticleEditorScreen> {
       medicalReviewerEn: _medicalReviewerEn.text.trim(),
       isMedicallyReviewed: _isMedicallyReviewed,
       tags: _tags,
-      imagePath: _imagePath ?? '',
-      audioBnPath: _audioBn,
-      audioEnPath: _audioEn,
+      // Fresh picks keep the original value here — saveArticleWithMedia
+      // replaces it with the uploaded Storage URL. Empty string clears the
+      // field (removal), since copyWith cannot set an explicit null.
+      imagePath: _pickedImage != null
+          ? widget.article.imagePath
+          : (_removedImage ? '' : widget.article.imagePath),
+      audioBnPath: _pickedAudioBn != null
+          ? widget.article.audioBnPath
+          : (_removedAudioBn ? '' : widget.article.audioBnPath),
+      audioEnPath: _pickedAudioEn != null
+          ? widget.article.audioEnPath
+          : (_removedAudioEn ? '' : widget.article.audioEnPath),
       slug: _slug.text.trim(),
       seoTitle: _seoTitle.text.trim(),
       seoDescription: _seoDesc.text.trim(),
     );
-    controller.saveArticle(updated);
+
+    await controller.saveArticleWithMedia(
+      updated,
+      previous: widget.isNew ? null : widget.article,
+      imageBytes: _pickedImage?.bytes != null
+          ? Uint8List.fromList(_pickedImage!.bytes!)
+          : null,
+      imageName: _pickedImage?.name ??
+          _pickedImage?.path?.split(RegExp(r'[/\\]')).last ??
+          'cover.jpg',
+      audioBnBytes: _pickedAudioBn?.bytes != null
+          ? Uint8List.fromList(_pickedAudioBn!.bytes!)
+          : null,
+      audioBnName: _pickedAudioBn?.name ?? 'audio_bn.mp3',
+      audioEnBytes: _pickedAudioEn?.bytes != null
+          ? Uint8List.fromList(_pickedAudioEn!.bytes!)
+          : null,
+      audioEnName: _pickedAudioEn?.name,
+    );
   }
 
   @override
@@ -159,16 +330,52 @@ class _ArticleEditorScreenState extends State<ArticleEditorScreen> {
           medicalReviewerBn: _medicalReviewerBn,
           medicalReviewerEn: _medicalReviewerEn,
           readingTime: _readingTime,
-          onReviewedChanged: (val) => setState(() => _isMedicallyReviewed = val),
+          contentBn: _contentBn,
+          contentEn: _contentEn,
+          onReviewedChanged: (val) =>
+              setState(() => _isMedicallyReviewed = val),
         ),
         const SizedBox(height: 16),
         ArticleEditorMediaSection(
           imagePath: _imagePath,
           audioBn: _audioBn,
           audioEn: _audioEn,
-          onImageChanged: (p) => setState(() => _imagePath = p),
-          onAudioBnChanged: (p) => setState(() => _audioBn = p),
-          onAudioEnChanged: (p) => setState(() => _audioEn = p),
+          onImageChanged: (ImagePick? pick) {
+            setState(() {
+              _pickedImage = pick;
+              if (pick != null) {
+                _removedImage = false;
+                _imagePath = pick.path ?? _imagePath;
+              } else {
+                _removedImage = widget.article.imagePath.isNotEmpty;
+                _imagePath = null;
+              }
+            });
+          },
+          onAudioBnChanged: (AudioPick? pick) {
+            setState(() {
+              _pickedAudioBn = pick;
+              if (pick != null) {
+                _removedAudioBn = false;
+              } else {
+                _removedAudioBn =
+                    widget.article.audioBnPath?.isNotEmpty ?? false;
+                _audioBn = null;
+              }
+            });
+          },
+          onAudioEnChanged: (AudioPick? pick) {
+            setState(() {
+              _pickedAudioEn = pick;
+              if (pick != null) {
+                _removedAudioEn = false;
+              } else {
+                _removedAudioEn =
+                    widget.article.audioEnPath?.isNotEmpty ?? false;
+                _audioEn = null;
+              }
+            });
+          },
         ),
       ],
     );
@@ -190,52 +397,73 @@ class _ArticleEditorScreenState extends State<ArticleEditorScreen> {
       onAddTag: (t) => setState(() => _tags.add(t)),
       onRemoveTag: (t) => setState(() => _tags.remove(t)),
       onSave: _save,
-      onCancel: controller.closeEditor,
+      onCancel: _handleCancel,
     );
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(Responsive.isMobile(context) ? 14 : 20),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: Responsive.contentMax),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: controller.closeEditor,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    widget.isNew ? 'New Article' : 'Edit Article',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              if (desktop)
+    return PopScope(
+      canPop: !_isDirty,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _handleCancel();
+      },
+      child: SingleChildScrollView(
+        padding: EdgeInsets.all(Responsive.isMobile(context) ? 14 : 20),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: Responsive.contentMax),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(flex: 3, child: contentSection),
-                    const SizedBox(width: 16),
-                    Expanded(flex: 2, child: settingsSidebar),
-                  ],
-                )
-              else
-                Column(
-                  children: [
-                    contentSection,
-                    const SizedBox(height: 16),
-                    settingsSidebar,
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: _handleCancel,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      widget.isNew ? 'New Article' : 'Edit Article',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const Spacer(),
+                    Obx(
+                      () => controller.isSaving.value
+                          ? const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
                   ],
                 ),
-            ],
+                const SizedBox(height: 16),
+                if (desktop)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 3, child: contentSection),
+                      const SizedBox(width: 16),
+                      Expanded(flex: 2, child: settingsSidebar),
+                    ],
+                  )
+                else
+                  Column(
+                    children: [
+                      contentSection,
+                      const SizedBox(height: 16),
+                      settingsSidebar,
+                    ],
+                  ),
+              ],
+            ),
           ),
         ),
       ),

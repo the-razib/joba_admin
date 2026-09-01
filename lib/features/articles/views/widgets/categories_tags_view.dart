@@ -4,6 +4,7 @@ import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/theme/responsive.dart';
+import 'package:joba_admin/core/widgets/confirm_dialog.dart';
 import 'package:joba_admin/features/articles/controllers/articles_controller.dart';
 import 'package:joba_admin/features/articles/models/article_category.dart';
 import 'package:joba_admin/features/articles/views/widgets/add_article_category_dialog.dart';
@@ -94,7 +95,24 @@ class CategoriesTagsView extends GetView<ArticlesController> {
                     ],
                   ),
                 ),
-                if (canManage)
+                if (canManage) ...[
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final confirmed = await showConfirmDialog(
+                        context,
+                        title: 'Seed Default Content?',
+                        message:
+                            'This will populate Firestore with verified default articles, categories, and tags. Existing content will be safely merged.',
+                        confirmLabel: 'Seed Content',
+                      );
+                      if (confirmed == true) {
+                        await controller.seedDefaultContent();
+                      }
+                    },
+                    icon: const Icon(Icons.cloud_upload_outlined, size: 16),
+                    label: const Text('Seed Defaults'),
+                  ),
+                  const SizedBox(width: 8),
                   ElevatedButton.icon(
                     onPressed: () => AddArticleCategoryDialog.show(context),
                     icon: const Icon(Icons.add, size: 16),
@@ -104,6 +122,7 @@ class CategoriesTagsView extends GetView<ArticlesController> {
                       foregroundColor: Colors.white,
                     ),
                   ),
+                ],
               ],
             ),
             const SizedBox(height: 16),
@@ -519,14 +538,23 @@ class _CategoryRowItem extends StatelessWidget {
               border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
             ),
             child: category.imagePath.isNotEmpty
-                ? Image.asset(
-                    category.imagePath,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      child: const Icon(Icons.image, size: 16, color: AppColors.primary),
-                    ),
-                  )
+                ? (category.imagePath.startsWith('http')
+                    ? Image.network(
+                        category.imagePath,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          child: const Icon(Icons.image, size: 16, color: AppColors.primary),
+                        ),
+                      )
+                    : Image.asset(
+                        category.imagePath,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          child: const Icon(Icons.image, size: 16, color: AppColors.primary),
+                        ),
+                      ))
                 : Container(
                     color: AppColors.primary.withValues(alpha: 0.1),
                     child: const Icon(Icons.image, size: 16, color: AppColors.primary),
@@ -541,20 +569,16 @@ class _CategoryRowItem extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(
-                      category.nameBn,
-                      style: AppTheme.bengali(context).copyWith(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: palette.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '(${category.nameEn})',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: palette.textSecondary,
+                    Flexible(
+                      child: Text(
+                        '${category.nameBn} (${category.nameEn})',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTheme.bengali(context).copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: palette.textPrimary,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -617,6 +641,13 @@ class _CategoryRowItem extends StatelessWidget {
               onPressed: () => AddArticleCategoryDialog.show(context, category: category),
             ),
 
+            // Delete Category Button
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.danger),
+              tooltip: 'Delete Category',
+              onPressed: () => _confirmDeleteCategory(context, category),
+            ),
+
             // Active Switch
             Switch(
               value: category.active,
@@ -624,6 +655,34 @@ class _CategoryRowItem extends StatelessWidget {
               onChanged: (_) => controller.toggleCategory(category.id),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteCategory(BuildContext context, ArticleCategory category) {
+    final controller = Get.find<ArticlesController>();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Category'),
+        content: Text(
+          'Are you sure you want to delete category "${category.nameEn}"? '
+          'This will remove it from the admin panel and mobile app.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              controller.deleteCategory(category.id);
+            },
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );

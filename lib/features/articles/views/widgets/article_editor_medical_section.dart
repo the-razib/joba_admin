@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
+import 'package:joba_admin/core/utils/reading_time_calculator.dart';
 
-/// Editor section for Medical Reviewer verification and reading time.
+/// Editor section for Medical Reviewer verification and auto-calculated reading time.
 class ArticleEditorMedicalSection extends StatelessWidget {
   final bool isMedicallyReviewed;
   final TextEditingController medicalReviewerBn;
   final TextEditingController medicalReviewerEn;
   final TextEditingController readingTime;
+  final TextEditingController contentBn;
+  final TextEditingController contentEn;
   final ValueChanged<bool> onReviewedChanged;
+  final VoidCallback? onAutoCalculateReadingTime;
 
   const ArticleEditorMedicalSection({
     super.key,
@@ -15,7 +20,10 @@ class ArticleEditorMedicalSection extends StatelessWidget {
     required this.medicalReviewerBn,
     required this.medicalReviewerEn,
     required this.readingTime,
+    required this.contentBn,
+    required this.contentEn,
     required this.onReviewedChanged,
+    this.onAutoCalculateReadingTime,
   });
 
   @override
@@ -99,6 +107,7 @@ class ArticleEditorMedicalSection extends StatelessWidget {
 
               // English Doctor Name & Reading Time in Row
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     flex: 3,
@@ -130,27 +139,108 @@ class ArticleEditorMedicalSection extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Reading Time (min)',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                            color: palette.textSecondary,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              'Reading Time (min)',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: palette.textSecondary,
+                              ),
+                            ),
+                            const Spacer(),
+                            Tooltip(
+                              message:
+                                  'Standard Reading Speed:\n• বাংলা: ১৬০ শব্দ/মিনিট\n• English: 200 words/min',
+                              child: Icon(
+                                Icons.info_outline_rounded,
+                                size: 14,
+                                color: palette.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 6),
                         TextField(
                           controller: readingTime,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            hintText: '3',
-                            prefixIcon: Icon(Icons.timer_outlined, size: 18),
+                          decoration: InputDecoration(
+                            hintText: 'Auto',
+                            prefixIcon:
+                                const Icon(Icons.timer_outlined, size: 18),
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.auto_awesome_rounded,
+                                  size: 17, color: AppColors.primary),
+                              tooltip: 'Recalculate from text length',
+                              onPressed: () {
+                                final calculated =
+                                    ReadingTimeCalculator.calculate(
+                                  contentBn: contentBn.text,
+                                  contentEn: contentEn.text,
+                                );
+                                readingTime.text = '$calculated';
+                                if (onAutoCalculateReadingTime != null) {
+                                  onAutoCalculateReadingTime!();
+                                }
+                              },
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
                 ],
+              ),
+
+              const SizedBox(height: 8),
+
+              // Dynamic word count & speed helper badge
+              AnimatedBuilder(
+                animation: Listenable.merge([contentBn, contentEn]),
+                builder: (context, _) {
+                  final bnWords =
+                      ReadingTimeCalculator.countWords(contentBn.text);
+                  final enWords =
+                      ReadingTimeCalculator.countWords(contentEn.text);
+                  final autoMin = ReadingTimeCalculator.calculate(
+                    contentBn: contentBn.text,
+                    contentEn: contentEn.text,
+                  );
+
+                  return Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.18),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.speed_rounded,
+                          size: 14,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'টেক্সট দৈর্ঘ্য: $bnWords শব্দ (বাংলা @ 160 wpm) • $enWords words (English @ 200 wpm) ➔ আনুমানিক $autoMin মিনিট',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: palette.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ],
           ],

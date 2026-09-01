@@ -6,10 +6,11 @@ import 'package:uuid/uuid.dart';
 ///
 /// Follows structured path conventions: `{folder}/{yyyy-MM}/{uuid}_{sanitized_name}`
 class StorageService {
-  final FirebaseStorage _storage;
+  final FirebaseStorage? _storage;
 
-  StorageService([FirebaseStorage? storage])
-      : _storage = storage ?? FirebaseStorage.instance;
+  StorageService([FirebaseStorage? storage]) : _storage = storage;
+
+  FirebaseStorage get storage => _storage ?? FirebaseStorage.instance;
 
   /// Uploads binary data and returns the public download URL.
   Future<String> uploadBytes({
@@ -27,7 +28,7 @@ class StorageService {
     final uniqueId = const Uuid().v4().substring(0, 8);
 
     final path = '$folder/$yearMonth/${uniqueId}_$sanitizedName';
-    final ref = _storage.ref().child(path);
+    final ref = storage.ref().child(path);
 
     final metadata = SettableMetadata(
       contentType: contentType ?? _inferContentType(sanitizedName),
@@ -45,10 +46,10 @@ class StorageService {
   Future<void> deleteFile(String urlOrPath) async {
     try {
       if (urlOrPath.startsWith('http')) {
-        final ref = _storage.refFromURL(urlOrPath);
+        final ref = storage.refFromURL(urlOrPath);
         await ref.delete();
       } else {
-        final ref = _storage.ref().child(urlOrPath);
+        final ref = storage.ref().child(urlOrPath);
         await ref.delete();
       }
     } catch (e) {

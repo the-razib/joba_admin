@@ -5,12 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
+import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/core/widgets/bilingual_text_field.dart';
 import 'package:joba_admin/features/articles/controllers/articles_controller.dart';
 import 'package:joba_admin/features/articles/models/article_category.dart';
 
-/// Modal dialog for adding or editing a bilingual article category with image upload,
-/// adaptive mobile preview matching full/half selection, and recommended pixel dimensions.
+/// Modal dialog for adding or editing a bilingual article category with direct image upload,
+/// full input validation with error borders, and adaptive real-time mobile preview.
 class AddArticleCategoryDialog extends StatefulWidget {
   final ArticleCategory? categoryToEdit;
 
@@ -33,15 +34,11 @@ class _AddArticleCategoryDialogState extends State<AddArticleCategoryDialog> {
   late final TextEditingController _enNameController;
   late final TextEditingController _bnSubtitleController;
   late final TextEditingController _enSubtitleController;
-  late final TextEditingController _imagePathController;
-  Uint8List? _uploadedImageBytes;
-  late bool _isFullWidth;
 
-  final List<String> _presetImages = const [
-    'assets/images/articles/article_care.jpg',
-    'assets/images/articles/article_period.jpg',
-    'assets/images/articles/article_menopause.jpg',
-  ];
+  Uint8List? _uploadedImageBytes;
+  String? _uploadedImageName;
+  late bool _isFullWidth;
+  bool _hasAttemptedSave = false;
 
   @override
   void initState() {
@@ -51,9 +48,6 @@ class _AddArticleCategoryDialogState extends State<AddArticleCategoryDialog> {
     _enNameController = TextEditingController(text: cat?.nameEn ?? '');
     _bnSubtitleController = TextEditingController(text: cat?.subtitleBn ?? '');
     _enSubtitleController = TextEditingController(text: cat?.subtitleEn ?? '');
-    _imagePathController = TextEditingController(
-      text: cat?.imagePath ?? 'assets/images/articles/article_care.jpg',
-    );
     _isFullWidth = cat?.isFullWidth ?? false;
 
     // Listen to text updates to refresh the preview live
@@ -73,7 +67,6 @@ class _AddArticleCategoryDialogState extends State<AddArticleCategoryDialog> {
     _enNameController.dispose();
     _bnSubtitleController.dispose();
     _enSubtitleController.dispose();
-    _imagePathController.dispose();
     super.dispose();
   }
 
@@ -84,11 +77,19 @@ class _AddArticleCategoryDialogState extends State<AddArticleCategoryDialog> {
     );
     if (result == null || result.files.isEmpty) return;
     final file = result.files.first;
+    if (file.bytes != null && file.bytes!.isNotEmpty) {
+      setState(() {
+        _uploadedImageBytes = file.bytes;
+        _uploadedImageName = file.name;
+        _hasAttemptedSave = false;
+      });
+    }
+  }
+
+  void _removeUploadedImage() {
     setState(() {
-      _uploadedImageBytes = file.bytes;
-      if (file.path != null) {
-        _imagePathController.text = file.path!;
-      }
+      _uploadedImageBytes = null;
+      _uploadedImageName = null;
     });
   }
 
@@ -97,6 +98,12 @@ class _AddArticleCategoryDialogState extends State<AddArticleCategoryDialog> {
     final controller = Get.find<ArticlesController>();
     final isEditing = widget.categoryToEdit != null;
     final palette = context.palette;
+
+    final hasExistingImage =
+        widget.categoryToEdit != null && widget.categoryToEdit!.imagePath.isNotEmpty;
+    final hasImage =
+        (_uploadedImageBytes != null && _uploadedImageBytes!.isNotEmpty) || hasExistingImage;
+    final isImageMissing = _hasAttemptedSave && !hasImage;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
@@ -159,12 +166,24 @@ class _AddArticleCategoryDialogState extends State<AddArticleCategoryDialog> {
               const Divider(height: 1),
               const SizedBox(height: 18),
 
-              // 1. Bilingual Category Name
+              // 1. Bilingual Category Name (with error border when missing)
               BilingualField(
-                label: 'Category Name',
+                label: 'Category Name *',
                 bnController: _bnNameController,
                 enController: _enNameController,
-                hintBn: 'যেমন: যত্ন, পিরিয়ড, মেনোপজ, মুক্তি',
+                bnErrorText: _hasAttemptedSave && _bnNameController.text.trim().isEmpty
+                    ? 'বাংলা ক্যাটাগরি নাম দিন'
+                    : null,
+                enErrorText: _hasAttemptedSave && _enNameController.text.trim().isEmpty
+                    ? 'English category name is required'
+                    : null,
+                onBnChanged: (_) {
+                  if (_hasAttemptedSave) setState(() {});
+                },
+                onEnChanged: (_) {
+                  if (_hasAttemptedSave) setState(() {});
+                },
+                hintBn: 'যেমন: যত্ন, পিরিয়ড, মেনোপজ, ডিসচার্জ',
                 hintEn: 'e.g. Care, Period, Menopause, Discharge',
               ),
               const SizedBox(height: 14),
@@ -223,11 +242,11 @@ class _AddArticleCategoryDialogState extends State<AddArticleCategoryDialog> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Cover Photo Preview (${_isFullWidth ? "Full Width" : "Half Width"})',
+                    'Cover Photo Preview (${_isFullWidth ? "Full Width" : "Half Width"}) *',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: palette.textPrimary,
+                      color: isImageMissing ? Colors.red : palette.textPrimary,
                     ),
                   ),
                   Container(
@@ -249,70 +268,126 @@ class _AddArticleCategoryDialogState extends State<AddArticleCategoryDialog> {
               ),
               const SizedBox(height: 10),
 
-              // Adaptive Live Preview Container
-              _buildAdaptiveLivePreview(context),
+              // Adaptive Live Preview Container (shows red error border if missing)
+              _buildAdaptiveLivePreview(context, hasError: isImageMissing),
               const SizedBox(height: 12),
 
-              // Upload Image and Preset Choices
+              // Direct Image Upload Action & Selected File Status
               Row(
                 children: [
                   OutlinedButton.icon(
                     onPressed: _pickImageFile,
-                    icon: const Icon(Icons.cloud_upload_outlined, size: 16),
-                    label: const Text('Upload Image'),
+                    icon: const Icon(Icons.cloud_upload_outlined, size: 17),
+                    label: Text(
+                      _uploadedImageBytes != null || hasExistingImage
+                          ? 'Change Image'
+                          : 'Upload Image',
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        color: isImageMissing ? Colors.red : AppColors.primary,
+                        width: isImageMissing ? 1.5 : 1.0,
+                      ),
+                      foregroundColor: isImageMissing ? Colors.red : AppColors.primary,
+                    ),
                   ),
                   const SizedBox(width: 12),
-                  Text(
-                    'or preset:',
-                    style: TextStyle(fontSize: 11.5, color: palette.textSecondary),
-                  ),
-                  const SizedBox(width: 8),
-                  for (final preset in _presetImages) ...[
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _uploadedImageBytes = null;
-                          _imagePathController.text = preset;
-                        });
-                      },
-                      child: Container(
-                        width: 44,
-                        height: 34,
-                        margin: const EdgeInsets.only(right: 6),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: _uploadedImageBytes == null &&
-                                    _imagePathController.text == preset
-                                ? AppColors.primary
-                                : Colors.grey.withValues(alpha: 0.3),
-                            width: _uploadedImageBytes == null &&
-                                    _imagePathController.text == preset
-                                ? 2.2
-                                : 1,
-                          ),
+                  if (_uploadedImageBytes != null) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.3),
                         ),
-                        clipBehavior: Clip.antiAlias,
-                        child: Image.asset(preset, fit: BoxFit.cover),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.check_circle,
+                            size: 15,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 6),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 180),
+                            child: Text(
+                              _uploadedImageName ?? 'New Image Selected',
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          InkWell(
+                            onTap: _removeUploadedImage,
+                            borderRadius: BorderRadius.circular(10),
+                            child: const Padding(
+                              padding: EdgeInsets.all(2.0),
+                              child: Icon(
+                                Icons.close,
+                                size: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else if (hasExistingImage) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: palette.inputFill,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: palette.border),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.image_outlined,
+                            size: 15,
+                            color: palette.textSecondary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Current Image Active',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: palette.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ],
               ),
-              const SizedBox(height: 10),
 
-              // Asset / URL text field
-              TextField(
-                controller: _imagePathController,
-                decoration: const InputDecoration(
-                  hintText: 'Asset path or web URL (e.g. assets/images/articles/...)',
-                  prefixIcon: Icon(Icons.link, size: 18),
-                  isDense: true,
+              // Image Error message
+              if (isImageMissing) ...[
+                const SizedBox(height: 6),
+                const Row(
+                  children: [
+                    Icon(Icons.error_outline, size: 14, color: Colors.red),
+                    SizedBox(width: 4),
+                    Text(
+                      'ক্যাটাগরির জন্য কভার ছবি আপলোড করা আবশ্যক (Cover photo is required)',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: Colors.red,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
-                onChanged: (_) => setState(() {
-                  _uploadedImageBytes = null;
-                }),
-              ),
+              ],
               const SizedBox(height: 24),
 
               // Action Buttons
@@ -328,29 +403,52 @@ class _AddArticleCategoryDialogState extends State<AddArticleCategoryDialog> {
                     onPressed: () {
                       final nameBn = _bnNameController.text.trim();
                       final nameEn = _enNameController.text.trim();
-                      if (nameBn.isEmpty || nameEn.isEmpty) return;
+                      final hasValidImage = (_uploadedImageBytes != null &&
+                              _uploadedImageBytes!.isNotEmpty) ||
+                          hasExistingImage;
 
-                      final imgPath = _imagePathController.text.trim().isNotEmpty
-                          ? _imagePathController.text.trim()
-                          : 'assets/images/articles/article_care.jpg';
+                      if (nameBn.isEmpty || nameEn.isEmpty || !hasValidImage) {
+                        setState(() {
+                          _hasAttemptedSave = true;
+                        });
+                        if (nameBn.isEmpty || nameEn.isEmpty) {
+                          AppToast.warning(
+                            'Missing Information',
+                            'Please provide category name in both Bengali and English.',
+                          );
+                        } else {
+                          AppToast.warning(
+                            'Cover Photo Required',
+                            'Please upload a cover image for this category.',
+                          );
+                        }
+                        return;
+                      }
+
+                      final subtitleBn = _bnSubtitleController.text.trim();
+                      final subtitleEn = _enSubtitleController.text.trim();
 
                       if (isEditing) {
                         final updated = widget.categoryToEdit!.copyWith(
                           nameBn: nameBn,
                           nameEn: nameEn,
-                          subtitleBn: _bnSubtitleController.text.trim(),
-                          subtitleEn: _enSubtitleController.text.trim(),
-                          imagePath: imgPath,
+                          subtitleBn: subtitleBn,
+                          subtitleEn: subtitleEn,
                           isFullWidth: _isFullWidth,
                         );
-                        controller.updateCategory(updated);
+                        controller.updateCategory(
+                          updated,
+                          imageBytes: _uploadedImageBytes,
+                          imageName: _uploadedImageName ?? 'banner.jpg',
+                        );
                       } else {
                         controller.addCategory(
                           nameBn: nameBn,
                           nameEn: nameEn,
-                          subtitleBn: _bnSubtitleController.text.trim(),
-                          subtitleEn: _enSubtitleController.text.trim(),
-                          imagePath: imgPath,
+                          subtitleBn: subtitleBn,
+                          subtitleEn: subtitleEn,
+                          imageBytes: _uploadedImageBytes,
+                          imageName: _uploadedImageName ?? 'banner.jpg',
                           isFullWidth: _isFullWidth,
                         );
                       }
@@ -449,7 +547,7 @@ class _AddArticleCategoryDialogState extends State<AddArticleCategoryDialog> {
     );
   }
 
-  Widget _buildAdaptiveLivePreview(BuildContext context) {
+  Widget _buildAdaptiveLivePreview(BuildContext context, {bool hasError = false}) {
     final title = _bnNameController.text.isNotEmpty
         ? _bnNameController.text
         : 'ক্যাটাগরি শিরোনাম';
@@ -465,6 +563,10 @@ class _AddArticleCategoryDialogState extends State<AddArticleCategoryDialog> {
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: hasError ? Colors.red : Colors.transparent,
+            width: hasError ? 2.0 : 0.0,
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.08),
@@ -523,7 +625,10 @@ class _AddArticleCategoryDialogState extends State<AddArticleCategoryDialog> {
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.primary, width: 1.5),
+                border: Border.all(
+                  color: hasError ? Colors.red : AppColors.primary,
+                  width: hasError ? 2.0 : 1.5,
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: AppColors.primary.withValues(alpha: 0.12),
@@ -633,20 +738,60 @@ class _AddArticleCategoryDialogState extends State<AddArticleCategoryDialog> {
   }
 
   Widget _buildPreviewImage() {
-    if (_uploadedImageBytes != null) {
-      return Image.memory(_uploadedImageBytes!, fit: BoxFit.cover);
+    if (_uploadedImageBytes != null && _uploadedImageBytes!.isNotEmpty) {
+      return Image.memory(
+        _uploadedImageBytes!,
+        key: ValueKey(_uploadedImageBytes.hashCode),
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+        errorBuilder: (context, error, stackTrace) => _fallbackPlaceholder(),
+      );
     }
-    final path = _imagePathController.text.trim();
-    if (path.isEmpty) {
-      return Container(color: const Color(0xFFC0A89A));
+    final existingPath = widget.categoryToEdit?.imagePath.trim() ?? '';
+    if (existingPath.isNotEmpty) {
+      if (existingPath.startsWith('http://') || existingPath.startsWith('https://')) {
+        return Image.network(
+          existingPath,
+          key: ValueKey(existingPath),
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          errorBuilder: (context, error, stackTrace) => _fallbackPlaceholder(),
+        );
+      }
+      return Image.asset(
+        existingPath,
+        key: ValueKey(existingPath),
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _fallbackPlaceholder(),
+      );
     }
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      return Image.network(path, fit: BoxFit.cover);
-    }
-    return Image.asset(
-      path,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) => Container(color: const Color(0xFFC0A89A)),
+    return _fallbackPlaceholder();
+  }
+
+  Widget _fallbackPlaceholder() {
+    return Container(
+      color: context.palette.inputFill,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.add_photo_alternate_outlined,
+              size: 28,
+              color: context.palette.textSecondary.withValues(alpha: 0.6),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'No Cover Image',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: context.palette.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

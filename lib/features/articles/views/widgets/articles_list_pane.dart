@@ -117,11 +117,14 @@ class ArticlesListPane extends GetView<ArticlesController> {
               }
               return ReorderableListView.builder(
                 itemCount: list.length,
-                buildDefaultDragHandles: true,
+                buildDefaultDragHandles: false,
                 onReorder: controller.reorderArticles,
-                itemBuilder: (_, i) => ArticleListItem(
+                itemBuilder: (_, i) => ReorderableDelayedDragStartListener(
                   key: ValueKey(list[i].id),
-                  article: list[i],
+                  index: i,
+                  child: ArticleListItem(
+                    article: list[i],
+                  ),
                 ),
               );
             }),

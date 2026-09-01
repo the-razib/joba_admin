@@ -75,13 +75,13 @@ class DashboardPopularArticlesCard extends GetView<DashboardController> {
                             ),
                             const SizedBox(width: 10),
                             Icon(
-                              Icons.favorite_outline,
+                              Icons.bookmark_outline_rounded,
                               size: 13,
                               color: context.palette.textSecondary,
                             ),
                             const SizedBox(width: 3),
                             Text(
-                              compactNumber(a.likes),
+                              compactNumber(a.bookmarks),
                               style: TextStyle(
                                 fontSize: 11,
                                 color: context.palette.textSecondary,

@@ -1,19 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum ArticleStatus {
-  draft,
-  review,
-  published;
+  published('Published'),
+  draft('Draft'),
+  review('Review');
 
-  String get label => switch (this) {
-        ArticleStatus.draft => 'Draft',
-        ArticleStatus.review => 'In Review',
-        ArticleStatus.published => 'Published',
-      };
+  final String label;
+  const ArticleStatus(this.label);
 }
 
-/// Mirrors the app's bilingual `articles` Firestore schema and extends it
-/// with admin-only fields (audio, SEO, stats, medical review) that the app safely ignores.
+/// Rich Article entity supporting bilingual content (BN & EN),
+/// real analytics (views & bookmarks), medical review metadata, and dual serialization.
 class Article {
   const Article({
     required this.id,
@@ -32,12 +29,12 @@ class Article {
     this.featured = false,
     this.displayOrder = 0,
     this.views = 0,
-    this.likes = 0,
+    this.bookmarks = 0,
     this.commentsCount = 0,
     this.shares = 0,
     this.readingTimeMin = 3,
-    this.medicalReviewerBn = 'ডাঃ সাবরিনা সুলতানা',
-    this.medicalReviewerEn = 'Dr. Sabrina Sultana',
+    this.medicalReviewerBn = 'ডা. সাবরিনা রহমান (এমবিবিএস, এফসিপিএস)',
+    this.medicalReviewerEn = 'Dr. Sabrina Rahman (MBBS, FCPS)',
     this.isMedicallyReviewed = true,
     this.slug = '',
     this.seoTitle = '',
@@ -56,7 +53,7 @@ class Article {
   final String subtitleEn;
   final String contentBn;
   final String contentEn;
-  final String imagePath; // asset path (mock) or Storage URL (Phase 3)
+  final String imagePath;
   final String? audioBnPath;
   final String? audioEnPath;
   final List<String> tags;
@@ -64,7 +61,8 @@ class Article {
   final bool featured;
   final int displayOrder;
   final int views;
-  final int likes;
+  final int bookmarks;
+  int get likes => bookmarks; // Backwards compatibility alias
   final int commentsCount;
   final int shares;
   final int readingTimeMin;
@@ -80,6 +78,7 @@ class Article {
   final int version;
 
   Article copyWith({
+    String? id,
     String? categoryId,
     String? titleBn,
     String? titleEn,
@@ -94,6 +93,10 @@ class Article {
     ArticleStatus? status,
     bool? featured,
     int? displayOrder,
+    int? views,
+    int? bookmarks,
+    int? commentsCount,
+    int? shares,
     int? readingTimeMin,
     String? medicalReviewerBn,
     String? medicalReviewerEn,
@@ -101,11 +104,11 @@ class Article {
     String? slug,
     String? seoTitle,
     String? seoDescription,
-    int? version,
     DateTime? updatedAt,
+    int? version,
   }) =>
       Article(
-        id: id,
+        id: id ?? this.id,
         categoryId: categoryId ?? this.categoryId,
         titleBn: titleBn ?? this.titleBn,
         titleEn: titleEn ?? this.titleEn,
@@ -120,16 +123,17 @@ class Article {
         status: status ?? this.status,
         featured: featured ?? this.featured,
         displayOrder: displayOrder ?? this.displayOrder,
-        views: views,
-        likes: likes,
-        commentsCount: commentsCount,
-        shares: shares,
+        views: views ?? this.views,
+        bookmarks: bookmarks ?? this.bookmarks,
+        commentsCount: commentsCount ?? this.commentsCount,
+        shares: shares ?? this.shares,
         readingTimeMin: readingTimeMin ?? this.readingTimeMin,
         medicalReviewerBn: medicalReviewerBn ?? this.medicalReviewerBn,
         medicalReviewerEn: medicalReviewerEn ?? this.medicalReviewerEn,
         isMedicallyReviewed: isMedicallyReviewed ?? this.isMedicallyReviewed,
         slug: slug ?? this.slug,
         seoTitle: seoTitle ?? this.seoTitle,
+        seoDescription: seoDescription ?? this.seoDescription,
         createdBy: createdBy,
         createdAt: createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
@@ -140,15 +144,22 @@ class Article {
     return {
       'id': id,
       'categoryId': categoryId,
+      'category': categoryId,
       'title': {'bn': titleBn, 'en': titleEn},
       'titleBn': titleBn,
       'titleEn': titleEn,
+      'title_bn': titleBn,
+      'title_en': titleEn,
       'subtitle': {'bn': subtitleBn, 'en': subtitleEn},
       'subtitleBn': subtitleBn,
       'subtitleEn': subtitleEn,
+      'subtitle_bn': subtitleBn,
+      'subtitle_en': subtitleEn,
       'content': {'bn': contentBn, 'en': contentEn},
       'contentBn': contentBn,
       'contentEn': contentEn,
+      'content_bn': contentBn,
+      'content_en': contentEn,
       'imagePath': imagePath,
       'imageUrl': imagePath,
       'audioBnPath': audioBnPath,
@@ -156,10 +167,13 @@ class Article {
       'audioUrl': {'bn': audioBnPath, 'en': audioEnPath},
       'tags': tags,
       'status': status.name,
+      'isPublished': status == ArticleStatus.published,
       'featured': featured,
       'displayOrder': displayOrder,
+      'order': displayOrder,
       'views': views,
-      'likes': likes,
+      'bookmarks': bookmarks,
+      'likes': bookmarks,
       'commentsCount': commentsCount,
       'shares': shares,
       'readingTimeMin': readingTimeMin,
@@ -173,6 +187,7 @@ class Article {
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'version': version,
+      'articleVersion': version,
     };
   }
 
@@ -189,7 +204,9 @@ class Article {
     final contentMap = map['content'] as Map<String, dynamic>?;
     final audioMap = map['audioUrl'] as Map<String, dynamic>?;
 
-    final statusStr = map['status']?.toString().toLowerCase() ?? 'published';
+    final isPub = map['isPublished'] as bool?;
+    final statusStr = map['status']?.toString().toLowerCase() ??
+        (isPub == false ? 'draft' : 'published');
     final artStatus = ArticleStatus.values.firstWhere(
       (s) => s.name == statusStr,
       orElse: () => ArticleStatus.published,
@@ -197,27 +214,58 @@ class Article {
 
     return Article(
       id: docId ?? map['id']?.toString() ?? '',
-      categoryId: map['categoryId']?.toString() ?? 'period',
-      titleBn: titleMap?['bn']?.toString() ?? map['titleBn']?.toString() ?? '',
-      titleEn: titleMap?['en']?.toString() ?? map['titleEn']?.toString() ?? '',
-      subtitleBn: subtitleMap?['bn']?.toString() ?? map['subtitleBn']?.toString() ?? '',
-      subtitleEn: subtitleMap?['en']?.toString() ?? map['subtitleEn']?.toString() ?? '',
-      contentBn: contentMap?['bn']?.toString() ?? map['contentBn']?.toString() ?? '',
-      contentEn: contentMap?['en']?.toString() ?? map['contentEn']?.toString() ?? '',
-      imagePath: map['imageUrl']?.toString() ?? map['imagePath']?.toString() ?? '',
-      audioBnPath: audioMap?['bn']?.toString() ?? map['audioBnPath']?.toString(),
-      audioEnPath: audioMap?['en']?.toString() ?? map['audioEnPath']?.toString(),
-      tags: (map['tags'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      categoryId: map['categoryId']?.toString() ??
+          map['category']?.toString() ??
+          'period',
+      titleBn: titleMap?['bn']?.toString() ??
+          map['titleBn']?.toString() ??
+          map['title_bn']?.toString() ??
+          '',
+      titleEn: titleMap?['en']?.toString() ??
+          map['titleEn']?.toString() ??
+          map['title_en']?.toString() ??
+          '',
+      subtitleBn: subtitleMap?['bn']?.toString() ??
+          map['subtitleBn']?.toString() ??
+          map['subtitle_bn']?.toString() ??
+          '',
+      subtitleEn: subtitleMap?['en']?.toString() ??
+          map['subtitleEn']?.toString() ??
+          map['subtitle_en']?.toString() ??
+          '',
+      contentBn: contentMap?['bn']?.toString() ??
+          map['contentBn']?.toString() ??
+          map['content_bn']?.toString() ??
+          '',
+      contentEn: contentMap?['en']?.toString() ??
+          map['contentEn']?.toString() ??
+          map['content_en']?.toString() ??
+          '',
+      imagePath: map['imageUrl']?.toString() ??
+          map['imagePath']?.toString() ??
+          '',
+      audioBnPath: audioMap?['bn']?.toString() ??
+          map['audioBnPath']?.toString(),
+      audioEnPath: audioMap?['en']?.toString() ??
+          map['audioEnPath']?.toString(),
+      tags: (map['tags'] as List?)?.map((e) => e.toString()).toList() ??
+          const [],
       status: artStatus,
       featured: map['featured'] as bool? ?? false,
-      displayOrder: (map['displayOrder'] as num?)?.toInt() ?? 0,
+      displayOrder: (map['displayOrder'] as num?)?.toInt() ??
+          (map['order'] as num?)?.toInt() ??
+          0,
       views: (map['views'] as num?)?.toInt() ?? 0,
-      likes: (map['likes'] as num?)?.toInt() ?? 0,
+      bookmarks: (map['bookmarks'] as num?)?.toInt() ??
+          (map['likes'] as num?)?.toInt() ??
+          0,
       commentsCount: (map['commentsCount'] as num?)?.toInt() ?? 0,
       shares: (map['shares'] as num?)?.toInt() ?? 0,
       readingTimeMin: (map['readingTimeMin'] as num?)?.toInt() ?? 3,
-      medicalReviewerBn: map['medicalReviewerBn']?.toString() ?? 'ডাঃ সাবরিনা সুলতানা',
-      medicalReviewerEn: map['medicalReviewerEn']?.toString() ?? 'Dr. Sabrina Sultana',
+      medicalReviewerBn: map['medicalReviewerBn']?.toString() ??
+          'ডা. সাবরিনা রহমান (এমবিবিএস, এফসিপিএস)',
+      medicalReviewerEn: map['medicalReviewerEn']?.toString() ??
+          'Dr. Sabrina Rahman (MBBS, FCPS)',
       isMedicallyReviewed: map['isMedicallyReviewed'] as bool? ?? true,
       slug: map['slug']?.toString() ?? '',
       seoTitle: map['seoTitle']?.toString() ?? '',
@@ -225,7 +273,9 @@ class Article {
       createdBy: map['createdBy']?.toString() ?? 'Admin',
       createdAt: parseDate(map['createdAt']),
       updatedAt: parseDate(map['updatedAt']),
-      version: (map['version'] as num?)?.toInt() ?? 1,
+      version: (map['version'] as num?)?.toInt() ??
+          (map['articleVersion'] as num?)?.toInt() ??
+          1,
     );
   }
 }

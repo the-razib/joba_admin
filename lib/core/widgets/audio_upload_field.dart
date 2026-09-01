@@ -1,4 +1,8 @@
+// ignore_for_file: experimental_member_use
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
@@ -20,9 +24,33 @@ class AudioPick {
   final String? path;
 }
 
+/// In-memory audio source so freshly picked files can be previewed before
+/// upload — on web (bytes only) and desktop (bytes or file path).
+class _BytesAudioSource extends StreamAudioSource {
+  _BytesAudioSource(this.bytes, this.mime);
+
+  final Uint8List bytes;
+  final String mime;
+
+  @override
+  Future<StreamAudioResponse> request([int? start, int? end]) async {
+    final from = start ?? 0;
+    final to = end ?? bytes.length;
+    return StreamAudioResponse(
+      sourceLength: bytes.length,
+      contentLength: to - from,
+      offset: from,
+      stream: Stream.value(bytes.sublist(from, to)),
+      contentType: mime,
+    );
+  }
+}
+
 /// Audio upload row with inline preview playback.
-/// Local playback works on desktop/mobile; on web the preview becomes
-/// available after the real upload (Phase 3 Storage URL).
+///
+/// Preview priority: freshly picked bytes → picked file path → existing
+/// remote Storage URL. The player is fully reset whenever the selection
+/// changes, so playback always matches what is on screen.
 class AudioUploadField extends StatefulWidget {
   const AudioUploadField({
     super.key,
@@ -33,100 +61,153 @@ class AudioUploadField extends StatefulWidget {
   });
 
   final String label; // e.g. 'Audio — বাংলা (BN)'
-  final String? currentPath; // existing remote url (Phase 3)
-  final String? currentLabel; // existing file name
+  final String? currentPath; // existing remote Storage URL
+  final String? currentLabel; // existing file name override
   final ValueChanged<AudioPick?> onChanged;
 
   @override
   State<AudioUploadField> createState() => _AudioUploadFieldState();
+
+  /// Extracts a readable file name from a Storage download URL, e.g.
+  /// `.../articles%2Fid%2F2026-09%2Fab12cd_audio_bn.mp3?alt=media…`
+  /// → `ab12cd_audio_bn.mp3`.
+  static String? fileNameFromUrl(String? url) {
+    if (url == null || !url.startsWith('http')) return null;
+    try {
+      final path = Uri.parse(url).path;
+      final parts = path.split(RegExp(r'%2F|/')).where((s) => s.isNotEmpty);
+      if (parts.isEmpty) return null;
+      final name = Uri.decodeComponent(parts.last);
+      return name.isEmpty ? null : name;
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 class _AudioUploadFieldState extends State<AudioUploadField> {
   AudioPick? _picked;
   AudioPlayer? _player;
+  StreamSubscription<ProcessingState>? _stateSub;
   bool _playing = false;
 
-  bool get _hasAudio => _picked != null || widget.currentPath != null;
+  bool get _hasAudio =>
+      _picked != null ||
+      (widget.currentPath != null && widget.currentPath!.isNotEmpty);
 
-  bool get _canPlayLocally =>
-      _picked?.path != null ||
+  bool get _canPlay =>
+      (_picked?.bytes?.isNotEmpty ?? false) ||
+      (_picked?.path != null) ||
       (widget.currentPath != null && widget.currentPath!.startsWith('http'));
 
   @override
   void dispose() {
+    _stateSub?.cancel();
     _player?.dispose();
     super.dispose();
   }
 
   Future<void> _pick() async {
     final result = await FilePicker.platform.pickFiles(
-      type: FileType.audio,
+      type: FileType.custom,
+      allowedExtensions: const ['mp3', 'm4a', 'wav', 'aac', 'ogg', 'flac'],
       withData: true,
     );
     if (result == null || result.files.isEmpty) return;
     final f = result.files.first;
+    await _resetPlayer();
     setState(() {
       _picked = AudioPick(
         name: f.name,
         size: f.size,
         bytes: f.bytes,
-        path: f.path,
+        path: kIsWeb ? null : f.path,
       );
     });
     widget.onChanged(_picked);
   }
 
-  void _remove() {
-    _player?.stop();
-    setState(() => _playing = false);
-    _picked = null;
+  Future<void> _remove() async {
+    await _resetPlayer();
+    setState(() => _picked = null);
     widget.onChanged(null);
   }
 
+  /// Stops and releases the current source so the next play uses fresh data.
+  Future<void> _resetPlayer() async {
+    await _stateSub?.cancel();
+    _stateSub = null;
+    await _player?.dispose();
+    _player = null;
+    if (mounted) setState(() => _playing = false);
+  }
+
   Future<void> _togglePlay() async {
-    _player ??= AudioPlayer();
-    final player = _player!;
     if (_playing) {
-      await player.pause();
-      setState(() => _playing = false);
+      await _player?.pause();
+      if (mounted) setState(() => _playing = false);
       return;
     }
+
+    _player ??= AudioPlayer();
+    final player = _player!;
     try {
       if (player.audioSource == null) {
-        if (_picked?.path != null) {
+        final bytes = _picked?.bytes;
+        if (bytes != null && bytes.isNotEmpty) {
+          await player.setAudioSource(
+            _BytesAudioSource(
+              Uint8List.fromList(bytes),
+              _mimeFor(_picked!.name),
+            ),
+          );
+        } else if (_picked?.path != null) {
           await player.setFilePath(_picked!.path!);
-        } else if (widget.currentPath != null) {
+        } else if (widget.currentPath != null &&
+            widget.currentPath!.startsWith('http')) {
           await player.setUrl(widget.currentPath!);
         } else {
           AppToast.info(
             'Preview not available',
-            'Web preview is available after upload (Phase 3 Storage).',
+            'Upload an audio file to preview it.',
           );
           return;
         }
+        _stateSub ??= player.processingStateStream.listen((state) {
+          if (state == ProcessingState.completed && mounted) {
+            setState(() => _playing = false);
+            player.seek(Duration.zero);
+          }
+        });
       }
-      await player.play();
-      setState(() => _playing = true);
-      player.processingStateStream.listen((state) {
-        if (state == ProcessingState.completed && mounted) {
-          setState(() => _playing = false);
-          player.seek(Duration.zero);
-        }
-      });
+      unawaited(player.play());
+      if (mounted) setState(() => _playing = true);
     } catch (_) {
-      AppToast.error(
-        'Audio Error',
-        'Could not play this audio file.',
-      );
+      await _resetPlayer();
+      AppToast.error('Audio Error', 'Could not play this audio file.');
     }
+  }
+
+  String _mimeFor(String name) {
+    final ext = name.split('.').last.toLowerCase();
+    return switch (ext) {
+      'wav' => 'audio/wav',
+      'm4a' || 'mp4' || 'aac' => 'audio/mp4',
+      'ogg' => 'audio/ogg',
+      'flac' => 'audio/flac',
+      _ => 'audio/mpeg',
+    };
   }
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    final name = _picked?.name ?? widget.currentLabel ?? widget.currentPath;
+    final name =
+        _picked?.name ??
+        widget.currentLabel ??
+        AudioUploadField.fileNameFromUrl(widget.currentPath);
     final sub = _picked != null
-        ? '${_picked!.name} • ${fileSizeLabel(_picked!.size)} (new)'
+        ? '${_picked!.name} • ${fileSizeLabel(_picked!.size)} (new — uploads on save)'
         : name ?? 'No audio uploaded';
 
     return Container(
@@ -181,7 +262,7 @@ class _AudioUploadFieldState extends State<AudioUploadField> {
               ],
             ),
           ),
-          if (_hasAudio && _canPlayLocally)
+          if (_hasAudio && _canPlay)
             IconButton(
               tooltip: _playing ? 'Pause' : 'Play preview',
               onPressed: _togglePlay,

@@ -18,9 +18,9 @@ class ArticleEditorMediaSection extends StatelessWidget {
   final String? imagePath;
   final String? audioBn;
   final String? audioEn;
-  final ValueChanged<String?> onImageChanged;
-  final ValueChanged<String?> onAudioBnChanged;
-  final ValueChanged<String?> onAudioEnChanged;
+  final ValueChanged<ImagePick?> onImageChanged;
+  final ValueChanged<AudioPick?> onAudioBnChanged;
+  final ValueChanged<AudioPick?> onAudioEnChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -44,21 +44,19 @@ class ArticleEditorMediaSection extends StatelessWidget {
             ImageUploadField(
               label: 'Cover Image (16:9 recommended)',
               currentPath: imagePath,
-              onChanged: (ImagePick? pick) => onImageChanged(pick?.path),
+              onChanged: onImageChanged,
             ),
             const SizedBox(height: 14),
             AudioUploadField(
               label: 'Audio Narration — বাংলা',
               currentPath: audioBn,
-              currentLabel: audioBn != null ? 'Audio file' : null,
-              onChanged: (AudioPick? pick) => onAudioBnChanged(pick?.path),
+              onChanged: onAudioBnChanged,
             ),
             const SizedBox(height: 14),
             AudioUploadField(
               label: 'Audio Narration — English',
               currentPath: audioEn,
-              currentLabel: audioEn != null ? 'Audio file' : null,
-              onChanged: (AudioPick? pick) => onAudioEnChanged(pick?.path),
+              onChanged: onAudioEnChanged,
             ),
           ],
         ),

@@ -12,6 +12,10 @@ class BilingualField extends StatelessWidget {
     this.maxLines = 1,
     this.hintBn,
     this.hintEn,
+    this.bnErrorText,
+    this.enErrorText,
+    this.onBnChanged,
+    this.onEnChanged,
   });
 
   final String label;
@@ -20,6 +24,10 @@ class BilingualField extends StatelessWidget {
   final int maxLines;
   final String? hintBn;
   final String? hintEn;
+  final String? bnErrorText;
+  final String? enErrorText;
+  final ValueChanged<String>? onBnChanged;
+  final ValueChanged<String>? onEnChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +51,8 @@ class BilingualField extends StatelessWidget {
           controller: bnController,
           hint: hintBn ?? 'বাংলায় লিখুন…',
           style: AppTheme.bengali(context, fontSize: 14),
+          errorText: bnErrorText,
+          onChanged: onBnChanged,
         ),
         const SizedBox(height: 8),
         _langField(
@@ -52,6 +62,8 @@ class BilingualField extends StatelessWidget {
           controller: enController,
           hint: hintEn ?? 'Write in English…',
           style: TextStyle(color: palette.textPrimary, fontSize: 14),
+          errorText: enErrorText,
+          onChanged: onEnChanged,
         ),
       ],
     );
@@ -64,6 +76,8 @@ class BilingualField extends StatelessWidget {
     required TextEditingController controller,
     required String hint,
     required TextStyle style,
+    String? errorText,
+    ValueChanged<String>? onChanged,
   }) {
     final palette = context.palette;
     final hintStyle = (chip == 'BN'
@@ -78,9 +92,12 @@ class BilingualField extends StatelessWidget {
       controller: controller,
       maxLines: maxLines,
       style: style,
+      onChanged: onChanged,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: hintStyle,
+        errorText: errorText,
+        errorStyle: const TextStyle(fontSize: 11, color: Colors.red),
         prefixIcon: Container(
           margin: const EdgeInsets.all(10),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

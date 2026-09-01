@@ -6,8 +6,10 @@ import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/utils/format.dart';
 import 'package:joba_admin/core/widgets/article_thumb.dart';
+import 'package:joba_admin/core/widgets/audio_player_card.dart';
 import 'package:joba_admin/core/widgets/badges.dart';
 import 'package:joba_admin/core/widgets/confirm_dialog.dart';
+import 'package:joba_admin/core/widgets/markdown_content_view.dart';
 import 'package:joba_admin/features/articles/controllers/articles_controller.dart';
 import 'package:joba_admin/features/articles/models/article.dart';
 
@@ -97,7 +99,10 @@ class _ArticleDetailsBodyState extends State<ArticleDetailsBody> {
                 const SizedBox(height: 14),
                 if (a.isMedicallyReviewed) ...[
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF1EAE8D).withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(12),
@@ -110,7 +115,9 @@ class _ArticleDetailsBodyState extends State<ArticleDetailsBody> {
                         Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1EAE8D).withValues(alpha: 0.18),
+                            color: const Color(
+                              0xFF1EAE8D,
+                            ).withValues(alpha: 0.18),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -374,15 +381,11 @@ class _ArticleDetailsBodyState extends State<ArticleDetailsBody> {
           ),
         ),
         const SizedBox(height: 6),
-        Text(
-          a.contentBn,
+        MarkdownContentView(
+          data: a.contentBn,
+          isBengali: true,
           maxLines: 4,
           overflow: TextOverflow.ellipsis,
-          style: AppTheme.bengali(
-            context,
-            fontSize: 13,
-            color: context.palette.textSecondary,
-          ),
         ),
         const SizedBox(height: 10),
         TextButton(
@@ -418,6 +421,9 @@ class _ArticleDetailsBodyState extends State<ArticleDetailsBody> {
 
   Widget _audioRow(BuildContext context, String label, String? path) {
     final has = path != null && path.isNotEmpty;
+    if (has) {
+      return AudioPlayerCard(label: label, url: path);
+    }
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
@@ -429,26 +435,18 @@ class _ArticleDetailsBodyState extends State<ArticleDetailsBody> {
           Icon(
             Icons.audiotrack,
             size: 17,
-            color: has ? AppColors.purple : context.palette.textSecondary,
+            color: context.palette.textSecondary,
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              has ? label : '$label — not uploaded',
+              '$label — not uploaded',
               style: TextStyle(
-                color: has
-                    ? context.palette.textPrimary
-                    : context.palette.textSecondary,
+                color: context.palette.textSecondary,
                 fontSize: 12,
               ),
             ),
           ),
-          if (has)
-            const Icon(
-              Icons.play_circle_outline,
-              size: 18,
-              color: AppColors.primary,
-            ),
         ],
       ),
     );
@@ -457,7 +455,12 @@ class _ArticleDetailsBodyState extends State<ArticleDetailsBody> {
   Widget _statsTab(BuildContext context) {
     final tiles = [
       (Icons.visibility_outlined, 'Total Views', a.views, AppColors.primary),
-      (Icons.favorite_outline, 'Likes', a.likes, AppColors.accent),
+      (
+        Icons.bookmark_outline_rounded,
+        'Bookmarks',
+        a.bookmarks,
+        AppColors.accent,
+      ),
       (
         Icons.chat_bubble_outline,
         'Comments',
@@ -617,21 +620,28 @@ class _ArticleDetailsBodyState extends State<ArticleDetailsBody> {
                     ],
                   ),
                   const SizedBox(height: 14),
+                  Builder(
+                    builder: (_) {
+                      final url = _bnReader ? a.audioBnPath : a.audioEnPath;
+                      if (url == null || url.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: AudioPlayerCard(
+                          label: _bnReader
+                              ? 'অডিও ন্যারেশন — বাংলা'
+                              : 'Audio Narration — English',
+                          url: url,
+                        ),
+                      );
+                    },
+                  ),
                   Flexible(
                     child: SingleChildScrollView(
-                      child: Text(
-                        _bnReader ? a.contentBn : a.contentEn,
-                        style: _bnReader
-                            ? AppTheme.bengali(
-                                context,
-                                fontSize: 14,
-                                color: context.palette.textPrimary,
-                              )
-                            : TextStyle(
-                                color: context.palette.textPrimary,
-                                fontSize: 14,
-                                height: 1.7,
-                              ),
+                      child: MarkdownContentView(
+                        data: _bnReader ? a.contentBn : a.contentEn,
+                        isBengali: _bnReader,
                       ),
                     ),
                   ),

@@ -75,6 +75,11 @@ service cloud.firestore {
       allow write: if isEditorOrSuperAdmin();
     }
 
+    match /article_tags/{tagId} {
+      allow read: if true;
+      allow write: if isEditorOrSuperAdmin();
+    }
+
     // ─── Screeners (Disease Checkup) ─────────────────────────────────────────
     match /screeners/{screenerId} {
       allow read: if true;

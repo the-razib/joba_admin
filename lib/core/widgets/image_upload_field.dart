@@ -1,12 +1,12 @@
-import 'dart:typed_data';
-
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 
 class ImagePick {
-  const ImagePick({this.path, this.bytes});
+  const ImagePick({this.name, this.path, this.bytes});
+  final String? name;
   final String? path;
   final List<int>? bytes;
 }
@@ -40,7 +40,11 @@ class _ImageUploadFieldState extends State<ImageUploadField> {
     );
     if (result == null || result.files.isEmpty) return;
     final f = result.files.first;
-    setState(() => _picked = ImagePick(path: f.path, bytes: f.bytes));
+    setState(() => _picked = ImagePick(
+          name: f.name,
+          path: kIsWeb ? null : f.path,
+          bytes: f.bytes,
+        ));
     widget.onChanged(_picked);
   }
 
