@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart' hide Value;
+import 'package:joba_admin/core/theme/app_colors.dart';
+import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/theme/responsive.dart';
 import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/core/utils/reading_time_calculator.dart';
@@ -290,24 +292,114 @@ class _ArticleEditorScreenState extends State<ArticleEditorScreen> {
       seoDescription: _seoDesc.text.trim(),
     );
 
-    await controller.saveArticleWithMedia(
-      updated,
-      previous: widget.isNew ? null : widget.article,
-      imageBytes: _pickedImage?.bytes != null
-          ? Uint8List.fromList(_pickedImage!.bytes!)
-          : null,
-      imageName: _pickedImage?.name ??
-          _pickedImage?.path?.split(RegExp(r'[/\\]')).last ??
-          'cover.jpg',
-      audioBnBytes: _pickedAudioBn?.bytes != null
-          ? Uint8List.fromList(_pickedAudioBn!.bytes!)
-          : null,
-      audioBnName: _pickedAudioBn?.name ?? 'audio_bn.mp3',
-      audioEnBytes: _pickedAudioEn?.bytes != null
-          ? Uint8List.fromList(_pickedAudioEn!.bytes!)
-          : null,
-      audioEnName: _pickedAudioEn?.name,
+    // Show non-dismissible modal loading dialog with live upload logs
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) {
+        return PopScope(
+          canPop: false,
+          child: Dialog(
+            backgroundColor: context.palette.card,
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
+                child: Obx(() {
+                  final statusText = controller.savingStatus.value.isNotEmpty
+                      ? controller.savingStatus.value
+                      : (widget.isNew ? 'Publishing article...' : 'Saving changes...');
+
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child: SizedBox(
+                            width: 26,
+                            height: 26,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.8,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        widget.isNew ? 'Publishing Article' : 'Saving Changes',
+                        style: TextStyle(
+                          color: context.palette.textPrimary,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        statusText,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: context.palette.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          minHeight: 4,
+                          backgroundColor: context.palette.border,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }),
+              ),
+            ),
+          ),
+        );
+      },
     );
+
+    try {
+      await controller.saveArticleWithMedia(
+        updated,
+        previous: widget.isNew ? null : widget.article,
+        imageBytes: _pickedImage?.bytes != null
+            ? Uint8List.fromList(_pickedImage!.bytes!)
+            : null,
+        imageName: _pickedImage?.name ??
+            _pickedImage?.path?.split(RegExp(r'[/\\]')).last ??
+            'cover.jpg',
+        audioBnBytes: _pickedAudioBn?.bytes != null
+            ? Uint8List.fromList(_pickedAudioBn!.bytes!)
+            : null,
+        audioBnName: _pickedAudioBn?.name ?? 'audio_bn.mp3',
+        audioEnBytes: _pickedAudioEn?.bytes != null
+            ? Uint8List.fromList(_pickedAudioEn!.bytes!)
+            : null,
+        audioEnName: _pickedAudioEn?.name,
+      );
+    } finally {
+      if (mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+    }
   }
 
   @override

@@ -223,7 +223,7 @@ class _ArticleDetailsBodyState extends State<ArticleDetailsBody> {
                               context,
                               title: 'Delete article?',
                               message:
-                                  '"${a.titleEn}" will be removed for all users.',
+                                  '"${a.titleEn}" and all associated files (cover image, audio narrations) will be permanently deleted.',
                               confirmLabel: 'Delete',
                               danger: true,
                             );

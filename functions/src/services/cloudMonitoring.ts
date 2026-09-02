@@ -133,9 +133,9 @@ export class CloudMonitoringService {
       storageBytes,
       storageObjects,
     ] = await Promise.all([
-      this.queryMetricSum('firestore.googleapis.com/document/read_count', startOfDay, endOfDay),
-      this.queryMetricSum('firestore.googleapis.com/document/write_count', startOfDay, endOfDay),
-      this.queryMetricSum('firestore.googleapis.com/document/delete_count', startOfDay, endOfDay),
+      this.queryMetricSum('firestore.googleapis.com/document/read_ops_count', startOfDay, endOfDay),
+      this.queryMetricSum('firestore.googleapis.com/document/write_ops_count', startOfDay, endOfDay),
+      this.queryMetricSum('firestore.googleapis.com/document/delete_ops_count', startOfDay, endOfDay),
       this.queryMetricSum('firestore.googleapis.com/network/sent_bytes_count', startOfDay, endOfDay),
       this.queryMetricSum('cloudfunctions.googleapis.com/function/execution_count', startOfDay, endOfDay),
       this.queryMetricGauge('storage.googleapis.com/storage/total_bytes', startOfDay, endOfDay),

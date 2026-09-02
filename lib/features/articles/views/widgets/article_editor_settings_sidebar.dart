@@ -247,23 +247,45 @@ class ArticleEditorSettingsSidebar extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: onCancel,
-                child: const Text('Cancel'),
+        Obx(() {
+          final isSaving = Get.isRegistered<ArticlesController>()
+              ? Get.find<ArticlesController>().isSaving.value
+              : false;
+
+          return Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: isSaving ? null : onCancel,
+                  child: const Text('Cancel'),
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: onSave,
-                child: Text(isNew ? 'Publish' : 'Save Changes'),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: isSaving ? null : onSave,
+                  child: isSaving
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(isNew ? 'Publishing...' : 'Saving...'),
+                          ],
+                        )
+                      : Text(isNew ? 'Publish' : 'Save Changes'),
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          );
+        }),
       ],
     );
   }

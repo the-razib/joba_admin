@@ -132,18 +132,21 @@ class FirebaseArticleRepository implements ArticleRepository {
     // Delete Firestore document
     await docRef.delete();
 
-    // Best-effort delete media files from Storage
+    // Permanently delete article folder from Firebase Storage (removes all files & subfolders)
+    await _storageService.deleteFolder('articles/$id');
+
+    // Also delete individual media files if stored outside the default folder
     final imgUrl = data?['imageUrl'] ?? data?['imagePath'];
     if (imgUrl != null && imgUrl.toString().startsWith('http')) {
-      _storageService.deleteFile(imgUrl.toString());
+      await _storageService.deleteFile(imgUrl.toString());
     }
     final audioBn = data?['audioBnPath'] ?? data?['audioUrl']?['bn'];
     if (audioBn != null && audioBn.toString().startsWith('http')) {
-      _storageService.deleteFile(audioBn.toString());
+      await _storageService.deleteFile(audioBn.toString());
     }
     final audioEn = data?['audioEnPath'] ?? data?['audioUrl']?['en'];
     if (audioEn != null && audioEn.toString().startsWith('http')) {
-      _storageService.deleteFile(audioEn.toString());
+      await _storageService.deleteFile(audioEn.toString());
     }
 
     await AuditService.log(

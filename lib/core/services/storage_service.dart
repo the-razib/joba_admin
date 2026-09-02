@@ -59,6 +59,36 @@ class StorageService {
     }
   }
 
+  /// Deletes an entire folder and all nested files/subfolders recursively from Storage.
+  Future<void> deleteFolder(String folderPath) async {
+    try {
+      final ref = storage.ref().child(folderPath);
+      await _deleteFolderRecursively(ref);
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ [StorageService] Delete folder warning ($folderPath): $e');
+      }
+    }
+  }
+
+  Future<void> _deleteFolderRecursively(Reference ref) async {
+    try {
+      final listResult = await ref.listAll();
+      for (final item in listResult.items) {
+        try {
+          await item.delete();
+        } catch (_) {}
+      }
+      for (final prefix in listResult.prefixes) {
+        await _deleteFolderRecursively(prefix);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ [StorageService] Recursive delete warning: $e');
+      }
+    }
+  }
+
   String _inferContentType(String filename) {
     final ext = filename.split('.').last.toLowerCase();
     return switch (ext) {

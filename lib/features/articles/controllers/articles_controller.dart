@@ -15,6 +15,7 @@ class ArticlesController extends GetxController {
 
   final loading = true.obs;
   final isSaving = false.obs;
+  final savingStatus = ''.obs;
   final categories = <ArticleCategory>[].obs;
   final articles = <Article>[].obs;
   final tags = <String>[].obs;
@@ -154,11 +155,13 @@ class ArticlesController extends GetxController {
     String? audioEnName,
   }) async {
     isSaving.value = true;
+    savingStatus.value = 'Preparing article...';
     try {
       var updated = a;
 
       // Upload Cover Image if freshly picked
       if (imageBytes != null && imageBytes.isNotEmpty) {
+        savingStatus.value = 'Uploading cover image to Firebase Storage...';
         final url = await storageService.uploadBytes(
           folder: 'articles/${a.id}',
           name: imageName ?? 'cover.jpg',
@@ -169,6 +172,7 @@ class ArticlesController extends GetxController {
 
       // Upload Bengali Audio if freshly picked
       if (audioBnBytes != null && audioBnBytes.isNotEmpty) {
+        savingStatus.value = 'Uploading Bengali audio narration to Storage...';
         final url = await storageService.uploadBytes(
           folder: 'articles/${a.id}',
           name: audioBnName ?? 'audio_bn.mp3',
@@ -179,6 +183,7 @@ class ArticlesController extends GetxController {
 
       // Upload English Audio if freshly picked
       if (audioEnBytes != null && audioEnBytes.isNotEmpty) {
+        savingStatus.value = 'Uploading English audio narration to Storage...';
         final url = await storageService.uploadBytes(
           folder: 'articles/${a.id}',
           name: audioEnName ?? 'audio_en.mp3',
@@ -187,12 +192,14 @@ class ArticlesController extends GetxController {
         updated = updated.copyWith(audioEnPath: url);
       }
 
+      savingStatus.value = 'Saving article content to Firestore...';
       final bumped = updated.copyWith(
         version: updated.version + (editingIsNew.value ? 0 : 1),
         updatedAt: DateTime.now(),
       );
 
       await repo.saveArticle(bumped);
+      savingStatus.value = 'Finalizing...';
 
       // Best-effort cleanup: delete replaced or removed media files from
       // Storage so old uploads don't orphan and accumulate cost.
@@ -224,6 +231,7 @@ class ArticlesController extends GetxController {
       return false;
     } finally {
       isSaving.value = false;
+      savingStatus.value = '';
     }
   }
 
@@ -241,10 +249,31 @@ class ArticlesController extends GetxController {
 
   Future<void> deleteArticle(String id) async {
     try {
+      final target = articles.firstWhereOrNull((a) => a.id == id);
+
+      // Permanently delete Firestore document & Storage files
       await repo.deleteArticle(id);
+
+      // Additional direct storage cleanup to ensure no orphaned files remain
+      await storageService.deleteFolder('articles/$id');
+      if (target != null) {
+        if (target.imagePath.startsWith('http')) {
+          await storageService.deleteFile(target.imagePath);
+        }
+        if (target.audioBnPath != null && target.audioBnPath!.startsWith('http')) {
+          await storageService.deleteFile(target.audioBnPath!);
+        }
+        if (target.audioEnPath != null && target.audioEnPath!.startsWith('http')) {
+          await storageService.deleteFile(target.audioEnPath!);
+        }
+      }
+
       articles.removeWhere((a) => a.id == id);
       if (selectedArticleId.value == id) _selectFirstArticle();
-      AppToast.success('Article Deleted', 'Article has been removed.');
+      AppToast.success(
+        'Article Deleted',
+        'Article and all associated media files permanently removed.',
+      );
     } catch (e) {
       debugPrint('Error deleting article: $e');
       AppToast.error('Delete Failed', e.toString());

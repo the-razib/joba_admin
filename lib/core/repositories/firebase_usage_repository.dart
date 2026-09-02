@@ -14,7 +14,7 @@ class FirebaseUsageRepository implements UsageRepository {
   final FirebaseFirestore _firestore;
 
   FirebaseUsageRepository([FirebaseFirestore? firestore])
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   static const String _collection = 'usage_daily';
 
@@ -23,37 +23,34 @@ class FirebaseUsageRepository implements UsageRepository {
 
   @override
   Future<List<UsageDay>> fetchDailyUsage({int days = 90}) async {
+    final now = DateTime.now();
+    final midnight = DateTime(now.year, now.month, now.day);
+    final startDate = midnight.subtract(Duration(days: days - 1));
+    final existingMap = <String, UsageDay>{};
+
+    // 1. Fetch cached rollups when the admin rules allow direct reads.
     try {
-      final now = DateTime.now();
-      final midnight = DateTime(now.year, now.month, now.day);
-      final startDate = midnight.subtract(Duration(days: days - 1));
+      final snap = await _firestore
+          .collection(_collection)
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+          .orderBy('date', descending: false)
+          .get();
 
-      // 1. Fetch from Firestore usage_daily
-      QuerySnapshot<Map<String, dynamic>> snap;
-      try {
-        snap = await _firestore
-            .collection(_collection)
-            .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
-            .orderBy('date', descending: false)
-            .get();
-      } catch (_) {
-        // Fallback query if index is pending
-        snap = await _firestore.collection(_collection).limit(days).get();
-      }
-
-      final existingMap = <String, UsageDay>{};
       for (final doc in snap.docs) {
         final day = UsageDay.fromMap(doc.data(), docId: doc.id);
-        final key = _dateKey(day.date);
-        existingMap[key] = day;
+        existingMap[_dateKey(day.date)] = day;
       }
+    } catch (e) {
+      debugPrint('Cached usage rollup read unavailable: $e');
+    }
 
-      // If usage_daily is sparse (fewer than 5 recorded days in range), trigger live backfill
-      if (existingMap.length < math.min(days, 7)) {
-        await _triggerOnDemandRollup(existingMap, days);
-      }
+    // 2. Use the callable as the authoritative refresh/backfill path.
+    if (existingMap.length < math.min(days, 7)) {
+      await _triggerOnDemandRollup(existingMap, days);
+    }
 
-      // 2. Build gap-filled continuous date series
+    try {
+      // 3. Build gap-filled continuous date series
       final result = <UsageDay>[];
       for (var i = days - 1; i >= 0; i--) {
         final targetDate = midnight.subtract(Duration(days: i));
@@ -63,17 +60,25 @@ class FirebaseUsageRepository implements UsageRepository {
           result.add(existingMap[key]!);
         } else {
           // Continuous zero-filled baseline day for days without activity
-          result.add(UsageDay(
-            date: targetDate,
-            reads: 0,
-            writes: 0,
-            deletes: 0,
-            firestoreStoredBytes: result.isNotEmpty ? result.last.firestoreStoredBytes : 1024 * 1024,
-            storageStoredBytes: result.isNotEmpty ? result.last.storageStoredBytes : 1024 * 1024,
-            storageObjects: result.isNotEmpty ? result.last.storageObjects : 0,
-            egressBytes: 0,
-            functionInvocations: 0,
-          ));
+          result.add(
+            UsageDay(
+              date: targetDate,
+              reads: 0,
+              writes: 0,
+              deletes: 0,
+              firestoreStoredBytes: result.isNotEmpty
+                  ? result.last.firestoreStoredBytes
+                  : 1024 * 1024,
+              storageStoredBytes: result.isNotEmpty
+                  ? result.last.storageStoredBytes
+                  : 1024 * 1024,
+              storageObjects: result.isNotEmpty
+                  ? result.last.storageObjects
+                  : 0,
+              egressBytes: 0,
+              functionInvocations: 0,
+            ),
+          );
         }
       }
 
@@ -84,14 +89,20 @@ class FirebaseUsageRepository implements UsageRepository {
     }
   }
 
-  Future<void> _triggerOnDemandRollup(Map<String, UsageDay> existingMap, int days) async {
+  Future<void> _triggerOnDemandRollup(
+    Map<String, UsageDay> existingMap,
+    int days,
+  ) async {
     try {
       // 1. Try Cloud Function first if available
       if (Get.isRegistered<FunctionsService>()) {
         final fn = Get.find<FunctionsService>();
-        final res = await fn.call('adminGetProjectUsage', {'days': days, 'backfillDays': days});
-        if (res.isSuccess && res.data != null && res.data['data'] is List) {
-          final list = res.data['data'] as List;
+        final res = await fn.call<Map<String, dynamic>>(
+          'adminGetProjectUsage',
+          {'days': days, 'backfillDays': days},
+        );
+        if (res['success'] == true && res['data'] is List) {
+          final list = res['data'] as List;
           for (final item in list) {
             if (item is Map<String, dynamic>) {
               final day = UsageDay.fromMap(item);
@@ -109,7 +120,10 @@ class FirebaseUsageRepository implements UsageRepository {
     }
   }
 
-  Future<void> _backfillFromLiveFirestore(Map<String, UsageDay> existingMap, int days) async {
+  Future<void> _backfillFromLiveFirestore(
+    Map<String, UsageDay> existingMap,
+    int days,
+  ) async {
     final now = DateTime.now();
     final midnight = DateTime(now.year, now.month, now.day);
     final startDate = midnight.subtract(Duration(days: days - 1));
@@ -136,16 +150,23 @@ class FirebaseUsageRepository implements UsageRepository {
       auditCount = counts[4].count ?? 20;
     } catch (_) {}
 
-    final totalDocs = userCount + reportCount + articleCount + avatarCount + auditCount;
+    final totalDocs =
+        userCount + reportCount + articleCount + avatarCount + auditCount;
     final storedFirestoreBytes = math.max(totalDocs * 2560, 1024 * 1024 * 3);
-    final storedStorageBytes = math.max((articleCount + avatarCount) * 350000, 1024 * 1024 * 18);
+    final storedStorageBytes = math.max(
+      (articleCount + avatarCount) * 350000,
+      1024 * 1024 * 18,
+    );
 
     // Fetch actual audit logs from past days to map real activity spikes per day
     final dailyActivityCount = <String, int>{};
     try {
       final auditSnap = await _firestore
           .collection('audit_logs')
-          .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+          .where(
+            'createdAt',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startDate),
+          )
           .get();
 
       for (final doc in auditSnap.docs) {
@@ -179,7 +200,9 @@ class FirebaseUsageRepository implements UsageRepository {
       // Calculate realistic operations based on real activity + background baseline
       final reads = activity > 0
           ? (activity * 65 + userCount * 12 + 180)
-          : (i == 0 ? (userCount * 18 + 240) : (i % 3 == 0 ? (userCount * 8 + 60) : (userCount * 4 + 20)));
+          : (i == 0
+                ? (userCount * 18 + 240)
+                : (i % 3 == 0 ? (userCount * 8 + 60) : (userCount * 4 + 20)));
 
       final writes = activity > 0
           ? (activity * 8 + 15)
