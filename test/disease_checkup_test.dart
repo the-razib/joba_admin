@@ -96,7 +96,8 @@ void main() {
               onPressed: () => ScreenerEditorDialog.show(
                 context,
                 screener: initial,
-                onSave: (screener, isNew) async => saved = screener,
+                onSave: (screener, isNew, {imageBytes, imageName}) async =>
+                    saved = screener,
               ),
               child: const Text('Edit'),
             ),

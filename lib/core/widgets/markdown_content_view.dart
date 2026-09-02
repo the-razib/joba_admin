@@ -3,7 +3,8 @@ import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 
 /// Reusable Markdown Content Viewer for Joba Admin
-/// Renders structured Markdown with Bengali/English typography, headings, lists, quotes, and inline bold/italic/links.
+/// Renders structured Markdown with Bengali/English typography, headings, lists,
+/// quotes/callouts with nested bold/italics/headings, and inline formatting.
 class MarkdownContentView extends StatelessWidget {
   final String data;
   final bool isBengali;
@@ -46,14 +47,39 @@ class MarkdownContentView extends StatelessWidget {
     final lines = rawText.split('\n');
     final children = <Widget>[];
 
-    for (int i = 0; i < lines.length; i++) {
+    int i = 0;
+    while (i < lines.length) {
       final line = lines[i];
       final trimmed = line.trim();
       if (trimmed.isEmpty) {
         children.add(const SizedBox(height: 8));
+        i++;
         continue;
       }
 
+      // 1. Blockquote handling (collect all consecutive lines starting with '>')
+      if (trimmed.startsWith('>')) {
+        final quoteLines = <String>[];
+        while (i < lines.length) {
+          final currentLine = lines[i].trim();
+          if (currentLine.startsWith('>')) {
+            quoteLines.add(currentLine.replaceFirst(RegExp(r'^>\s?'), ''));
+            i++;
+          } else if (quoteLines.isNotEmpty &&
+              currentLine.isEmpty &&
+              i + 1 < lines.length &&
+              lines[i + 1].trim().startsWith('>')) {
+            quoteLines.add('');
+            i++;
+          } else {
+            break;
+          }
+        }
+        children.add(_buildBlockquote(context, quoteLines, palette));
+        continue;
+      }
+
+      // 2. Headings
       if (trimmed.startsWith('# ')) {
         children.add(
           Padding(
@@ -99,29 +125,6 @@ class MarkdownContentView extends StatelessWidget {
             ),
           ),
         );
-      } else if (trimmed.startsWith('> ')) {
-        children.add(
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
-              border: const Border(
-                left: BorderSide(color: AppColors.primary, width: 3.5),
-              ),
-            ),
-            child: Text(
-              trimmed.substring(2),
-              style: (isBengali ? AppTheme.bengali(context) : const TextStyle())
-                  .copyWith(
-                fontSize: 13,
-                fontStyle: FontStyle.italic,
-                color: palette.textPrimary,
-              ),
-            ),
-          ),
-        );
       } else if (trimmed == '---' || trimmed == '***') {
         children.add(
           Divider(color: palette.border, height: 20),
@@ -154,8 +157,8 @@ class MarkdownContentView extends StatelessWidget {
             ),
           ),
         );
-      } else if (RegExp(r'^\d+\.\s').hasMatch(trimmed)) {
-        final match = RegExp(r'^(\d+\.)\s*(.*)').firstMatch(trimmed);
+      } else if (RegExp(r'^[0-9১-৯]+\.\s').hasMatch(trimmed)) {
+        final match = RegExp(r'^([0-9১-৯]+\.)\s*(.*)').firstMatch(trimmed);
         final num = match?.group(1) ?? '•';
         final text = match?.group(2) ?? '';
         children.add(
@@ -197,6 +200,7 @@ class MarkdownContentView extends StatelessWidget {
           ),
         );
       }
+      i++;
     }
 
     return Column(
@@ -206,12 +210,149 @@ class MarkdownContentView extends StatelessWidget {
     );
   }
 
+  Widget _buildBlockquote(
+    BuildContext context,
+    List<String> quoteLines,
+    AppPalette palette,
+  ) {
+    final quoteWidgets = <Widget>[];
+
+    for (int j = 0; j < quoteLines.length; j++) {
+      final qLine = quoteLines[j].trim();
+      if (qLine.isEmpty) {
+        quoteWidgets.add(const SizedBox(height: 6));
+        continue;
+      }
+
+      if (qLine.startsWith('### ')) {
+        quoteWidgets.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text(
+              qLine.substring(4),
+              style: (isBengali ? AppTheme.bengali(context) : const TextStyle())
+                  .copyWith(
+                fontWeight: FontWeight.w800,
+                fontSize: 14.5,
+                color: palette.textPrimary,
+                height: 1.35,
+              ),
+            ),
+          ),
+        );
+      } else if (qLine.startsWith('## ')) {
+        quoteWidgets.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text(
+              qLine.substring(3),
+              style: (isBengali ? AppTheme.bengali(context) : const TextStyle())
+                  .copyWith(
+                fontWeight: FontWeight.w800,
+                fontSize: 15.5,
+                color: palette.textPrimary,
+                height: 1.35,
+              ),
+            ),
+          ),
+        );
+      } else if (RegExp(r'^[0-9১-৯]+\.\s').hasMatch(qLine)) {
+        final match = RegExp(r'^([0-9১-৯]+\.)\s*(.*)').firstMatch(qLine);
+        final num = match?.group(1) ?? '•';
+        final text = match?.group(2) ?? '';
+        quoteWidgets.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$num ',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                    fontSize: 13,
+                    height: 1.6,
+                  ),
+                ),
+                Expanded(
+                  child: _buildRichInlineText(
+                    context,
+                    text,
+                    isBengali,
+                    palette,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      } else if (qLine.startsWith('• ') ||
+          qLine.startsWith('- ') ||
+          qLine.startsWith('* ')) {
+        quoteWidgets.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 7, right: 8),
+                  child: CircleAvatar(
+                    radius: 2.5,
+                    backgroundColor: AppColors.primary,
+                  ),
+                ),
+                Expanded(
+                  child: _buildRichInlineText(
+                    context,
+                    qLine.substring(2),
+                    isBengali,
+                    palette,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      } else {
+        quoteWidgets.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: _buildRichInlineText(
+              context,
+              qLine,
+              isBengali,
+              palette,
+            ),
+          ),
+        );
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: const Border(
+          left: BorderSide(color: AppColors.primary, width: 4),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: quoteWidgets,
+      ),
+    );
+  }
+
   Widget _buildTruncatedPreview(
     BuildContext context,
     String raw,
     AppPalette palette,
   ) {
-    // Strip markdown tags for clean compact preview
     final cleaned = raw
         .replaceAll(RegExp(r'#+\s*'), '')
         .replaceAll(RegExp(r'[\*\_\~]'), '')

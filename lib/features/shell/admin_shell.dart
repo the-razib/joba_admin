@@ -11,6 +11,7 @@ import 'package:joba_admin/features/avatars/views/avatars_screen.dart';
 import 'package:joba_admin/features/cycle_data/views/cycle_data_screen.dart';
 import 'package:joba_admin/features/dashboard/views/dashboard_screen.dart';
 import 'package:joba_admin/features/disease_checkup/views/admin_screener_screen.dart';
+import 'package:joba_admin/features/legal/views/legal_admin_screen.dart';
 import 'package:joba_admin/features/premium/views/premium_screen.dart';
 import 'package:joba_admin/features/push_notifications/views/push_screen.dart';
 import 'package:joba_admin/features/reminders/views/screens/reminders_screen.dart';
@@ -21,6 +22,7 @@ import 'package:joba_admin/features/shell/widgets/mobile_bottom_nav.dart';
 import 'package:joba_admin/features/shell/widgets/sidebar.dart';
 import 'package:joba_admin/features/shell/widgets/top_bar.dart';
 import 'package:joba_admin/features/usage/views/usage_screen.dart';
+import 'package:joba_admin/features/sathi_ai/views/sathi_ai_screen.dart';
 import 'package:joba_admin/features/users/views/users_screen.dart';
 import 'package:joba_admin/routes/app_routes.dart';
 
@@ -132,12 +134,16 @@ class AdminShell extends GetView<ShellController> {
         return const PremiumScreen();
       case NavId.settings:
         return const SettingsScreen();
+      case NavId.legal:
+        return const LegalAdminScreen();
       case NavId.admins:
         return const AdminManagementScreen();
       case NavId.audit:
         return const AuditLogsScreen();
       case NavId.usage:
         return const UsageScreen();
+      case NavId.sathiAi:
+        return const SathiAiScreen();
     }
   }
 }

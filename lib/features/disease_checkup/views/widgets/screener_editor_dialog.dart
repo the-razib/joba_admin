@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/features/disease_checkup/models/screener_admin_model.dart';
@@ -9,7 +10,12 @@ import 'package:joba_admin/core/widgets/image_upload_field.dart';
 
 class ScreenerEditorDialog extends StatefulWidget {
   final ScreenerAdminModel? initialScreener;
-  final FutureOr<void> Function(ScreenerAdminModel screener, bool isNew) onSave;
+  final FutureOr<void> Function(
+    ScreenerAdminModel screener,
+    bool isNew, {
+    Uint8List? imageBytes,
+    String? imageName,
+  }) onSave;
 
   const ScreenerEditorDialog({
     super.key,
@@ -20,8 +26,12 @@ class ScreenerEditorDialog extends StatefulWidget {
   static Future<void> show(
     BuildContext context, {
     ScreenerAdminModel? screener,
-    required FutureOr<void> Function(ScreenerAdminModel screener, bool isNew)
-    onSave,
+    required FutureOr<void> Function(
+      ScreenerAdminModel screener,
+      bool isNew, {
+      Uint8List? imageBytes,
+      String? imageName,
+    }) onSave,
   }) {
     return showDialog(
       context: context,
@@ -44,6 +54,7 @@ class _ScreenerEditorDialogState extends State<ScreenerEditorDialog> {
   late final TextEditingController _subEnCtrl;
   late final TextEditingController _sourceCtrl;
   late final TextEditingController _imagePathCtrl;
+  late final TextEditingController _orderCtrl;
   late bool _enabled;
   late bool _isNew;
   ImagePick? _pickedImage;
@@ -61,6 +72,9 @@ class _ScreenerEditorDialogState extends State<ScreenerEditorDialog> {
     _subEnCtrl = TextEditingController(text: s?.subtitleEn ?? '');
     _sourceCtrl = TextEditingController(text: s?.source ?? '');
     _imagePathCtrl = TextEditingController(text: s?.imagePath ?? '');
+    _orderCtrl = TextEditingController(
+      text: ((s?.displayOrder ?? 0) > 0 ? s!.displayOrder.toString() : '1'),
+    );
     _enabled = s?.enabled ?? true;
   }
 
@@ -73,6 +87,7 @@ class _ScreenerEditorDialogState extends State<ScreenerEditorDialog> {
     _subEnCtrl.dispose();
     _sourceCtrl.dispose();
     _imagePathCtrl.dispose();
+    _orderCtrl.dispose();
     super.dispose();
   }
 
@@ -109,7 +124,7 @@ class _ScreenerEditorDialogState extends State<ScreenerEditorDialog> {
       source: _sourceCtrl.text.trim(),
       imagePath: _pickedImage?.path ?? _imagePathCtrl.text.trim(),
       accentColorHex: initial?.accentColorHex ?? '#E65671',
-      displayOrder: initial?.displayOrder ?? 0,
+      displayOrder: int.tryParse(_orderCtrl.text.trim()) ?? (initial?.displayOrder ?? 0),
       enabled: _enabled,
       questions: initial?.questions ?? const [],
       riskTiers: defaultTiers,
@@ -119,7 +134,14 @@ class _ScreenerEditorDialogState extends State<ScreenerEditorDialog> {
     );
 
     setState(() => _isSaving = true);
-    await widget.onSave(screener, _isNew);
+    await widget.onSave(
+      screener,
+      _isNew,
+      imageBytes: _pickedImage?.bytes != null
+          ? Uint8List.fromList(_pickedImage!.bytes!)
+          : null,
+      imageName: _pickedImage?.name,
+    );
     if (!mounted) return;
     Navigator.of(context).pop();
   }
@@ -237,6 +259,24 @@ class _ScreenerEditorDialogState extends State<ScreenerEditorDialog> {
                               decoration: const InputDecoration(
                                 hintText:
                                     'e.g. Rotterdam Criteria, ESHRE, DSM-5, NICE Guidelines',
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Category Serial / Order Number',
+                              style: TextStyle(
+                                color: palette.textPrimary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            TextFormField(
+                              controller: _orderCtrl,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                hintText: 'e.g. 1, 2, 3...',
+                                prefixIcon: Icon(Icons.sort, size: 18),
                               ),
                             ),
                             const SizedBox(height: 16),

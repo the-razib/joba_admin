@@ -12,9 +12,11 @@ enum NavId {
   reports,
   premium,
   settings,
+  legal,
   admins,
   audit,
   usage,
+  sathiAi,
 }
 
 class NavItem {
@@ -80,6 +82,17 @@ const navItems = [
     id: NavId.settings,
     label: 'App Settings',
     icon: Icons.settings_outlined,
+  ),
+  NavItem(
+    id: NavId.legal,
+    label: 'Legal & Policies',
+    icon: Icons.policy_outlined,
+  ),
+  NavItem(
+    id: NavId.sathiAi,
+    label: 'Sathi AI Control',
+    icon: Icons.auto_awesome_outlined,
+    administration: true,
   ),
   NavItem(
     id: NavId.admins,

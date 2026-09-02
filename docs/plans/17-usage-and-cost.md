@@ -66,6 +66,21 @@ panel reads at ≤90 doc reads for a 90-day view.
       render missing days as zero, don't crash charts).
 - [ ] Tests: unit tests for gap-filling + range slicing.
 
+## Sathi AI Control dependency
+
+The Sathi AI admin module uses a separate configuration and analytics contract. It must not
+reuse `usage_daily` fields for model usage or store chat content in Firestore.
+
+- Configuration: `app_config/sathi_ai`
+- Daily analytics: `sathi_ai_usage_daily/{yyyy-mm-dd}`
+- Optional per-user quota state: `sathi_ai_user_usage/{uid}`
+- Admin mutations: append-only `audit_logs` entries
+- Chat history: mobile-only Drift storage in v1
+
+The Sathi AI dashboard may read pre-aggregated daily rollups only. It must not scan users or
+chat messages to calculate KPIs. The provider model and price table remain server-controlled;
+the panel renders returned rollup costs.
+
 ## Acceptance criteria
 
 - [ ] Charts display real usage for days since launch (non-zero reads appear immediately —

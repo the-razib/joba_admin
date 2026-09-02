@@ -8,10 +8,13 @@ import 'package:joba_admin/core/repositories/config_repository.dart';
 import 'package:joba_admin/core/repositories/firebase_article_repository.dart';
 import 'package:joba_admin/core/repositories/firebase_audit_log_repository.dart';
 import 'package:joba_admin/core/repositories/firebase_avatar_repository.dart';
+import 'package:joba_admin/core/repositories/firebase_legal_repository.dart';
 import 'package:joba_admin/core/repositories/firebase_premium_repository.dart';
 import 'package:joba_admin/core/repositories/firebase_report_repository.dart';
+import 'package:joba_admin/core/repositories/firebase_screener_repository.dart';
 import 'package:joba_admin/core/repositories/firebase_usage_repository.dart';
 import 'package:joba_admin/core/repositories/firebase_user_repository.dart';
+import 'package:joba_admin/core/repositories/legal_repository.dart';
 import 'package:joba_admin/core/repositories/premium_repository.dart';
 import 'package:joba_admin/core/repositories/push_repository.dart';
 import 'package:joba_admin/core/repositories/report_repository.dart';
@@ -34,6 +37,7 @@ import 'package:joba_admin/features/premium/controllers/premium_controller.dart'
 import 'package:joba_admin/features/push_notifications/controllers/push_controller.dart';
 import 'package:joba_admin/features/reminders/controllers/reminders_controller.dart';
 import 'package:joba_admin/features/reports/controllers/reports_controller.dart';
+import 'package:joba_admin/features/sathi_ai/controllers/sathi_ai_controller.dart';
 import 'package:joba_admin/features/shell/shell_controller.dart';
 import 'package:joba_admin/features/usage/controllers/usage_controller.dart';
 import 'package:joba_admin/features/users/controllers/users_controller.dart';
@@ -64,12 +68,7 @@ Future<void> main() async {
   }
 
   if (!firebaseInitialized) {
-    runApp(
-      FirebaseBootstrapErrorApp(
-        error: initError,
-        onRetry: () => main(),
-      ),
-    );
+    runApp(FirebaseBootstrapErrorApp(error: initError, onRetry: () => main()));
     return;
   }
 
@@ -109,20 +108,62 @@ class _AppBindings extends Bindings {
 
     // Flag to force mock implementations during development/testing or headless tests
     final bool hasFirebase = Firebase.apps.isNotEmpty;
-    const bool useMocks = bool.fromEnvironment('USE_MOCKS', defaultValue: false);
+    const bool useMocks = bool.fromEnvironment(
+      'USE_MOCKS',
+      defaultValue: false,
+    );
     final bool enableMocks = useMocks || !hasFirebase;
 
-    Get.lazyPut<UserRepository>(() => enableMocks ? MockUserRepository() : FirebaseUserRepository(), fenix: true);
-    Get.lazyPut<ArticleRepository>(() => enableMocks ? MockArticleRepository() : FirebaseArticleRepository(), fenix: true);
-    Get.lazyPut<AvatarRepository>(() => enableMocks ? MockAvatarRepository() : FirebaseAvatarRepository(), fenix: true);
-    Get.lazyPut<ReportRepository>(() => enableMocks ? MockReportRepository() : FirebaseReportRepository(), fenix: true);
-    Get.lazyPut<AuditLogRepository>(() => enableMocks ? MockAuditLogRepository() : FirebaseAuditLogRepository(), fenix: true);
-    Get.lazyPut<UsageRepository>(() => enableMocks ? MockUsageRepository() : FirebaseUsageRepository(), fenix: true);
-    Get.lazyPut<PushRepository>(() => enableMocks ? MockPushRepository() : MockPushRepository(), fenix: true);
-    Get.lazyPut<ScreenerRepository>(() => enableMocks ? MockScreenerRepository() : MockScreenerRepository(), fenix: true);
-    Get.lazyPut<ConfigRepository>(() => enableMocks ? MockConfigRepository() : FirebaseConfigRepository(), fenix: true);
-    Get.lazyPut<AdminRepository>(() => enableMocks ? MockAdminRepository() : FirebaseAdminRepository(), fenix: true);
-    Get.lazyPut<PremiumRepository>(() => enableMocks ? MockPremiumRepository() : FirebasePremiumRepository(), fenix: true);
+    Get.lazyPut<UserRepository>(
+      () => enableMocks ? MockUserRepository() : FirebaseUserRepository(),
+      fenix: true,
+    );
+    Get.lazyPut<ArticleRepository>(
+      () => enableMocks ? MockArticleRepository() : FirebaseArticleRepository(),
+      fenix: true,
+    );
+    Get.lazyPut<AvatarRepository>(
+      () => enableMocks ? MockAvatarRepository() : FirebaseAvatarRepository(),
+      fenix: true,
+    );
+    Get.lazyPut<ReportRepository>(
+      () => enableMocks ? MockReportRepository() : FirebaseReportRepository(),
+      fenix: true,
+    );
+    Get.lazyPut<AuditLogRepository>(
+      () =>
+          enableMocks ? MockAuditLogRepository() : FirebaseAuditLogRepository(),
+      fenix: true,
+    );
+    Get.lazyPut<UsageRepository>(
+      () => enableMocks ? MockUsageRepository() : FirebaseUsageRepository(),
+      fenix: true,
+    );
+    Get.lazyPut<PushRepository>(
+      () => enableMocks ? MockPushRepository() : MockPushRepository(),
+      fenix: true,
+    );
+    Get.lazyPut<ScreenerRepository>(
+      () =>
+          enableMocks ? MockScreenerRepository() : FirebaseScreenerRepository(),
+      fenix: true,
+    );
+    Get.lazyPut<ConfigRepository>(
+      () => enableMocks ? MockConfigRepository() : FirebaseConfigRepository(),
+      fenix: true,
+    );
+    Get.lazyPut<AdminRepository>(
+      () => enableMocks ? MockAdminRepository() : FirebaseAdminRepository(),
+      fenix: true,
+    );
+    Get.lazyPut<PremiumRepository>(
+      () => enableMocks ? MockPremiumRepository() : FirebasePremiumRepository(),
+      fenix: true,
+    );
+    Get.lazyPut<LegalRepository>(
+      () => enableMocks ? MockLegalRepository() : FirebaseLegalRepository(),
+      fenix: true,
+    );
 
     Get.lazyPut(() => ShellController(), fenix: true);
     Get.put(AuthController(), permanent: true);
@@ -140,5 +181,6 @@ class _AppBindings extends Bindings {
     Get.lazyPut(() => SettingsController(), fenix: true);
     Get.lazyPut(() => AdminManagementController(), fenix: true);
     Get.lazyPut(() => UsageController(), fenix: true);
+    Get.lazyPut(() => SathiAiController(), fenix: true);
   }
 }

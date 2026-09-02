@@ -216,11 +216,16 @@ class ScreenerAdminModel {
       'nameEn': nameEn,
       'subtitleBn': subtitleBn,
       'subtitleEn': subtitleEn,
+      'title': {'bn': nameBn, 'en': nameEn},
+      'description': {'bn': subtitleBn, 'en': subtitleEn},
       'source': source,
       'imagePath': imagePath,
+      'imageUrl': imagePath,
       'accentColorHex': accentColorHex,
       'displayOrder': displayOrder,
+      'order': displayOrder,
       'enabled': enabled,
+      'isActive': enabled,
       'questions': questions.map((q) => q.toMap()).toList(),
       'riskTiers': riskTiers.map((t) => t.toMap()).toList(),
       'totalCompletions': totalCompletions,
@@ -229,39 +234,58 @@ class ScreenerAdminModel {
     };
   }
 
-  factory ScreenerAdminModel.fromMap(Map<String, dynamic> map) {
+  factory ScreenerAdminModel.fromMap(Map<String, dynamic> map, [String? docId]) {
+    DateTime parseDate(dynamic val) {
+      if (val == null) return DateTime.now();
+      if (val is DateTime) return val;
+      if (val is String) return DateTime.tryParse(val) ?? DateTime.now();
+      try {
+        return (val as dynamic).toDate() as DateTime;
+      } catch (_) {
+        return DateTime.now();
+      }
+    }
+
+    final titleMap = map['title'] is Map ? map['title'] as Map : null;
+    final descMap = map['description'] is Map ? map['description'] as Map : null;
+
+    final nameBn = map['nameBn'] ?? titleMap?['bn'] ?? '';
+    final nameEn = map['nameEn'] ?? titleMap?['en'] ?? '';
+    final subtitleBn = map['subtitleBn'] ?? descMap?['bn'] ?? '';
+    final subtitleEn = map['subtitleEn'] ?? descMap?['en'] ?? '';
+
     return ScreenerAdminModel(
-      id: map['id'] ?? '',
-      nameBn: map['nameBn'] ?? '',
-      nameEn: map['nameEn'] ?? '',
-      subtitleBn: map['subtitleBn'] ?? '',
-      subtitleEn: map['subtitleEn'] ?? '',
+      id: map['id'] ?? docId ?? '',
+      nameBn: nameBn,
+      nameEn: nameEn,
+      subtitleBn: subtitleBn,
+      subtitleEn: subtitleEn,
       source: map['source'] ?? '',
-      imagePath: map['imagePath'] ?? '',
+      imagePath: map['imagePath'] ?? map['imageUrl'] ?? '',
       accentColorHex: map['accentColorHex'] ?? '#E65671',
-      displayOrder: (map['displayOrder'] as num?)?.toInt() ?? 0,
-      enabled: map['enabled'] as bool? ?? true,
-      questions:
-          (map['questions'] as List<dynamic>?)
+      displayOrder: (map['displayOrder'] as num?)?.toInt() ??
+          (map['order'] as num?)?.toInt() ??
+          0,
+      enabled: map['enabled'] as bool? ?? map['isActive'] as bool? ?? true,
+      questions: (map['questions'] as List<dynamic>?)
               ?.map(
-                (q) => ScreenerQuestionAdmin.fromMap(q as Map<String, dynamic>),
+                (q) => ScreenerQuestionAdmin.fromMap(
+                  Map<String, dynamic>.from(q as Map),
+                ),
               )
               .toList() ??
           [],
-      riskTiers:
-          (map['riskTiers'] as List<dynamic>?)
+      riskTiers: (map['riskTiers'] as List<dynamic>?)
               ?.map(
-                (t) => RiskTierAdminConfig.fromMap(t as Map<String, dynamic>),
+                (t) => RiskTierAdminConfig.fromMap(
+                  Map<String, dynamic>.from(t as Map),
+                ),
               )
               .toList() ??
           [],
       totalCompletions: (map['totalCompletions'] as num?)?.toInt() ?? 0,
-      createdAt: map['createdAt'] != null
-          ? DateTime.tryParse(map['createdAt']) ?? DateTime.now()
-          : DateTime.now(),
-      updatedAt: map['updatedAt'] != null
-          ? DateTime.tryParse(map['updatedAt']) ?? DateTime.now()
-          : DateTime.now(),
+      createdAt: parseDate(map['createdAt']),
+      updatedAt: parseDate(map['updatedAt']),
     );
   }
 }

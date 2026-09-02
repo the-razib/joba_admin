@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:get/get.dart';
 import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/features/disease_checkup/models/screener_admin_model.dart';
@@ -78,6 +79,7 @@ class AdminScreenerController extends GetxController {
 
   String get mostPopularScreener {
     if (screeners.isEmpty) return 'N/A';
+    if (totalCompletionsCount == 0) return 'None yet';
     final sorted = List<ScreenerAdminModel>.from(screeners)
       ..sort((a, b) => b.totalCompletions.compareTo(a.totalCompletions));
     return sorted.first.nameEn;
@@ -91,15 +93,25 @@ class AdminScreenerController extends GetxController {
   Future<void> saveScreener(
     ScreenerAdminModel screener, {
     required bool isNew,
+    Uint8List? imageBytes,
+    String? imageName,
   }) async {
     try {
       if (isNew) {
-        final created = await _repository.createScreener(screener);
+        final created = await _repository.createScreener(
+          screener,
+          imageBytes: imageBytes,
+          imageName: imageName,
+        );
         screeners.add(created);
         selectedScreenerId.value = created.id;
         AppToast.success('Success', 'Created screener "${screener.nameEn}"');
       } else {
-        final updated = await _repository.updateScreener(screener);
+        final updated = await _repository.updateScreener(
+          screener,
+          imageBytes: imageBytes,
+          imageName: imageName,
+        );
         final idx = screeners.indexWhere((s) => s.id == screener.id);
         if (idx != -1) {
           screeners[idx] = updated;
@@ -135,10 +147,36 @@ class AdminScreenerController extends GetxController {
         final idx = screeners.indexWhere((s) => s.id == id);
         if (idx != -1) {
           screeners[idx] = screeners[idx].copyWith(enabled: enabled);
+          screeners.refresh();
+          AppToast.success(
+            'Success',
+            'Screener "${screeners[idx].nameEn}" ${enabled ? "activated" : "deactivated"}.',
+          );
         }
       }
     } catch (e) {
       AppToast.error('Error', 'Failed to update active status: $e');
+    }
+  }
+
+  Future<void> reorderScreeners(int oldIndex, int newIndex) async {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final item = screeners.removeAt(oldIndex);
+    screeners.insert(newIndex, item);
+
+    // Re-index display orders 1..N
+    for (int i = 0; i < screeners.length; i++) {
+      screeners[i] = screeners[i].copyWith(displayOrder: i + 1);
+    }
+    screeners.refresh();
+
+    try {
+      await _repository.updateScreenersOrder(screeners);
+      AppToast.success('Order Saved', 'Category serial updated successfully.');
+    } catch (e) {
+      AppToast.error('Error', 'Failed to save category order: $e');
     }
   }
 

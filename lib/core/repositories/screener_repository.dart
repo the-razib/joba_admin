@@ -1,16 +1,26 @@
+import 'dart:typed_data';
 import 'package:joba_admin/features/disease_checkup/models/screener_admin_model.dart';
 
 abstract class ScreenerRepository {
   Future<List<ScreenerAdminModel>> getScreeners();
   Future<ScreenerAdminModel?> getScreenerById(String id);
-  Future<ScreenerAdminModel> createScreener(ScreenerAdminModel screener);
-  Future<ScreenerAdminModel> updateScreener(ScreenerAdminModel screener);
+  Future<ScreenerAdminModel> createScreener(
+    ScreenerAdminModel screener, {
+    Uint8List? imageBytes,
+    String? imageName,
+  });
+  Future<ScreenerAdminModel> updateScreener(
+    ScreenerAdminModel screener, {
+    Uint8List? imageBytes,
+    String? imageName,
+  });
   Future<bool> deleteScreener(String id);
   Future<bool> toggleScreenerActive(String id, bool enabled);
+  Future<void> updateScreenersOrder(List<ScreenerAdminModel> screeners);
 }
 
 class MockScreenerRepository implements ScreenerRepository {
-  final List<ScreenerAdminModel> _screeners = [
+  static List<ScreenerAdminModel> get initialClinicalScreeners => [
     // 1. PCOS Screener
     ScreenerAdminModel(
       id: 'pcos',
@@ -24,7 +34,7 @@ class MockScreenerRepository implements ScreenerRepository {
       accentColorHex: '#E65671',
       displayOrder: 1,
       enabled: true,
-      totalCompletions: 1420,
+      totalCompletions: 0,
       createdAt: DateTime.now().subtract(const Duration(days: 90)),
       updatedAt: DateTime.now().subtract(const Duration(days: 2)),
       questions: const [
@@ -133,7 +143,7 @@ class MockScreenerRepository implements ScreenerRepository {
       accentColorHex: '#E65671',
       displayOrder: 2,
       enabled: true,
-      totalCompletions: 980,
+      totalCompletions: 0,
       createdAt: DateTime.now().subtract(const Duration(days: 85)),
       updatedAt: DateTime.now().subtract(const Duration(days: 5)),
       questions: const [
@@ -244,7 +254,7 @@ class MockScreenerRepository implements ScreenerRepository {
       accentColorHex: '#E65671',
       displayOrder: 3,
       enabled: true,
-      totalCompletions: 740,
+      totalCompletions: 0,
       createdAt: DateTime.now().subtract(const Duration(days: 70)),
       updatedAt: DateTime.now().subtract(const Duration(days: 10)),
       questions: const [
@@ -358,7 +368,7 @@ class MockScreenerRepository implements ScreenerRepository {
       accentColorHex: '#E65671',
       displayOrder: 4,
       enabled: true,
-      totalCompletions: 1120,
+      totalCompletions: 0,
       createdAt: DateTime.now().subtract(const Duration(days: 60)),
       updatedAt: DateTime.now().subtract(const Duration(days: 1)),
       questions: const [
@@ -382,7 +392,7 @@ class MockScreenerRepository implements ScreenerRepository {
         ),
         ScreenerQuestionAdmin(
           id: 'heavy_3',
-          questionBn: 'ব্লিডিং ৭ দিনের বেশি স্থায়ী হয়',
+          questionBn: 'বড় রক্তের চাকা বা ক্লট নির্গত হওয়া (মুদ্রার চেয়ে বড়)',
           questionEn: 'Passing large blood clots (larger than a standard coin)',
           points: 1,
           order: 3,
@@ -450,6 +460,9 @@ class MockScreenerRepository implements ScreenerRepository {
     ),
   ];
 
+  late final List<ScreenerAdminModel> _screeners =
+      List.from(initialClinicalScreeners);
+
   @override
   Future<List<ScreenerAdminModel>> getScreeners() async {
     await Future.delayed(const Duration(milliseconds: 250));
@@ -467,14 +480,22 @@ class MockScreenerRepository implements ScreenerRepository {
   }
 
   @override
-  Future<ScreenerAdminModel> createScreener(ScreenerAdminModel screener) async {
+  Future<ScreenerAdminModel> createScreener(
+    ScreenerAdminModel screener, {
+    Uint8List? imageBytes,
+    String? imageName,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 300));
     _screeners.add(screener);
     return screener;
   }
 
   @override
-  Future<ScreenerAdminModel> updateScreener(ScreenerAdminModel screener) async {
+  Future<ScreenerAdminModel> updateScreener(
+    ScreenerAdminModel screener, {
+    Uint8List? imageBytes,
+    String? imageName,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 300));
     final index = _screeners.indexWhere((s) => s.id == screener.id);
     if (index != -1) {
@@ -505,5 +526,12 @@ class MockScreenerRepository implements ScreenerRepository {
       return true;
     }
     return false;
+  }
+
+  @override
+  Future<void> updateScreenersOrder(List<ScreenerAdminModel> screeners) async {
+    await Future.delayed(const Duration(milliseconds: 150));
+    _screeners.clear();
+    _screeners.addAll(screeners);
   }
 }
