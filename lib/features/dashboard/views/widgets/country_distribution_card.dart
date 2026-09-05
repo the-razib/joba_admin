@@ -1,26 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:joba_admin/core/theme/app_colors.dart';
+import 'package:get/get.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/theme/responsive.dart';
 import 'package:joba_admin/core/widgets/charts.dart';
+import 'package:joba_admin/features/dashboard/controllers/dashboard_controller.dart';
 
 /// Card containing the donut chart breakdown of users by country.
-class CountryDistributionCard extends StatelessWidget {
+class CountryDistributionCard extends GetView<DashboardController> {
   const CountryDistributionCard({super.key});
 
   @override
   Widget build(BuildContext context) {
     final isDesktop = Responsive.isDesktop(context);
-    const donut = DonutChart(
-      centerValue: '24,789',
-      slices: [
-        DonutSlice('Bangladesh', 78.4, AppColors.primary),
-        DonutSlice('India', 10.7, AppColors.accent),
-        DonutSlice('Pakistan', 4.3, AppColors.warning),
-        DonutSlice('Indonesia', 2.8, AppColors.purple),
-        DonutSlice('Others', 3.8, Color(0xFF9AA5A1)),
-      ],
-    );
 
     return Card(
       child: Padding(
@@ -43,17 +34,22 @@ class CountryDistributionCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            if (isDesktop)
-              const SizedBox(
-                height: 260,
-                child: Center(child: donut),
-              )
-            else
-              donut,
+            Obx(() {
+              final donut = DonutChart(
+                centerValue: controller.totalUsersFormatted,
+                slices: controller.countryDonutSlices,
+              );
+              if (isDesktop) {
+                return SizedBox(
+                  height: 260,
+                  child: Center(child: donut),
+                );
+              }
+              return donut;
+            }),
           ],
         ),
       ),
     );
   }
 }
-

@@ -30,8 +30,8 @@ void main() {
     String? actionLabelEn,
     String? actionUrl,
     PushStatus status = PushStatus.draft,
-    int delivered = 0,
-    int opened = 0,
+    int sentCount = 0,
+    int failedCount = 0,
   }) => PushNotification(
     id: 'PN-TEST',
     titleBn: titleBn,
@@ -46,8 +46,8 @@ void main() {
     actionLabelEn: actionLabelEn,
     actionUrl: actionUrl,
     status: status,
-    delivered: delivered,
-    opened: opened,
+    sentCount: sentCount,
+    failedCount: failedCount,
   );
 
   /// `Get.put` fires `onInit`, whose seed load is async; drain the queue so
@@ -139,9 +139,49 @@ void main() {
       expect(ok.hasAction, isTrue);
     });
 
-    test('open rate is zero rather than NaN with nothing delivered', () {
-      expect(campaign().openRate, 0);
-      expect(campaign(delivered: 200, opened: 50).openRate, 25);
+    test('acceptance rate is zero rather than NaN with nothing attempted', () {
+      expect(campaign().acceptanceRate, 0);
+      expect(campaign(sentCount: 150, failedCount: 50).acceptanceRate, 75);
+      expect(campaign(sentCount: 150, failedCount: 50).totalAttempted, 200);
+    });
+
+    test('copyWith preserves the English action label', () {
+      // Regression: actionLabelEn was declared but never forwarded, so every
+      // copyWith silently erased it — including on the dispatch path.
+      final original = campaign(
+        actionLabelBn: 'খুলুন',
+        actionLabelEn: 'Open',
+        actionUrl: 'joba://premium',
+      );
+      final copied = original.copyWith(status: PushStatus.sent);
+
+      expect(copied.actionLabelEn, 'Open');
+      expect(copied.actionLabelBn, 'খুলুন');
+      expect(copied.actionUrl, 'joba://premium');
+    });
+
+    test('a draft map never carries delivery state', () {
+      // The Cloud Function owns these; letting the panel write them would let a
+      // stale edit overwrite a real dispatch result.
+      final map = campaign(status: PushStatus.sent, sentCount: 99).toDraftMap();
+
+      expect(map.containsKey('status'), isFalse);
+      expect(map.containsKey('sentCount'), isFalse);
+      expect(map.containsKey('failedCount'), isFalse);
+      expect(map.containsKey('sentAt'), isFalse);
+      expect(map.containsKey('messageId'), isFalse);
+    });
+
+    test('actionType is derived for the mobile handler', () {
+      expect(campaign().toDraftMap()['actionType'], 'none');
+      expect(
+        campaign(
+          actionLabelBn: 'খুলুন',
+          actionLabelEn: 'Open',
+          actionUrl: 'joba://premium',
+        ).toDraftMap()['actionType'],
+        'screen',
+      );
     });
   });
 
@@ -168,15 +208,15 @@ void main() {
   });
 
   group('controller', () {
-    test('seeds from the repository', () async {
+    test('loads from the repository', () async {
       final c = await loaded();
       expect(c.loading.value, isFalse);
       expect(c.all, hasLength(5));
-      expect(c.sentCount, 4);
-      expect(c.totalDelivered, 71300);
-      expect(c.totalOpened, 35940);
+      expect(c.sentCampaignCount, 4);
+      expect(c.totalAccepted, 71300);
+      expect(c.totalRejected, 1420);
       expect(c.countWithImage(), 2);
-      expect(c.openRate, closeTo(50.4, 0.1));
+      expect(c.acceptanceRate, closeTo(98.0, 0.1));
     });
 
     test('a dual-channel campaign is visible under both filters', () async {
@@ -203,13 +243,25 @@ void main() {
       final draft = c.all.firstWhere((p) => p.id == 'PN-001');
       expect(draft.status, PushStatus.draft);
 
-      await c.sendDraft('PN-001');
+      final result = await c.sendDraft('PN-001');
 
       final sent = c.all.firstWhere((p) => p.id == 'PN-001');
       expect(sent.status, PushStatus.sent);
-      expect(sent.delivered, 18000, reason: 'bangladesh audience');
+      expect(result, isNotNull);
+      // bangladesh audience: 1800 targeted, 2% rejected.
+      expect(result!.targeted, 1800);
+      expect(sent.sentCount, 1764);
+      expect(sent.failedCount, 36);
       expect(sent.sentAt, isNotNull);
-      expect(c.sentCount, 5);
+      expect(c.sentCampaignCount, 5);
+    });
+
+    test('a campaign in flight cannot be dispatched twice', () async {
+      final c = await loaded();
+      c.dispatching.add('PN-001');
+
+      expect(await c.sendDraft('PN-001'), isNull);
+      expect(await c.resend('PN-001'), isNull);
     });
 
     test('an invalid draft is refused even from the controller', () async {
@@ -225,9 +277,11 @@ void main() {
       );
       await c.save(bad, send: true);
 
-      expect(c.all.first.id, bad.id);
+      // Saved as a draft, but never dispatched.
+      expect(c.all, hasLength(6));
+      expect(c.all.first.titleEn, '');
       expect(c.all.first.status, PushStatus.draft);
-      expect(c.all.first.delivered, 0);
+      expect(c.all.first.sentCount, 0);
     });
 
     test('save inserts a new campaign and replaces an existing one', () async {
@@ -244,23 +298,34 @@ void main() {
 
       await c.save(fresh, send: false);
       expect(c.all, hasLength(6));
-      expect(c.all.first.id, fresh.id);
+      expect(c.all.first.titleEn, 'Fresh');
 
-      await c.save(fresh.copyWith(titleEn: 'Edited'), send: false);
+      // A new campaign gets its id from the backend, not the client.
+      final assignedId = c.all.first.id;
+      expect(assignedId, isNotEmpty);
+
+      await c.save(
+        c.all.first.copyWith(titleEn: 'Edited'),
+        send: false,
+      );
       expect(c.all, hasLength(6), reason: 'replaced, not appended');
-      expect(c.all.first.titleEn, 'Edited');
+      expect(c.all.firstWhere((p) => p.id == assignedId).titleEn, 'Edited');
     });
 
-    test('resend adds to the delivered total', () async {
+    test('resend overwrites the previous dispatch result', () async {
       final c = await loaded();
       await c.resend('PN-003');
-      // 15200 seeded + 15000 accepted for the free audience.
-      expect(c.all.firstWhere((p) => p.id == 'PN-003').delivered, 30200);
+
+      // Each dispatch reports its own outcome; counts are replaced, not summed,
+      // which is what the Cloud Function does.
+      final campaign = c.all.firstWhere((p) => p.id == 'PN-003');
+      expect(campaign.sentCount, 1470, reason: 'free audience: 1500 - 2%');
+      expect(campaign.failedCount, 30);
     });
 
     test('remove drops the campaign', () async {
       final c = await loaded();
-      c.remove('PN-002');
+      await c.remove('PN-002');
       expect(c.all, hasLength(4));
       expect(c.all.map((p) => p.id), isNot(contains('PN-002')));
     });
@@ -271,8 +336,8 @@ void main() {
       await pumpPush(tester);
 
       expect(find.text('Push Notifications'), findsWidgets);
-      expect(find.text('Total Sent'), findsOneWidget);
-      expect(find.text('Open Rate'), findsWidgets);
+      expect(find.text('Campaigns Sent'), findsOneWidget);
+      expect(find.text('Acceptance Rate'), findsWidgets);
       expect(find.text('Your period is approaching'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
@@ -358,32 +423,58 @@ void main() {
       expect(find.text('Fix before sending'), findsOneWidget);
     });
 
-    testWidgets('image-only without an image blocks sending', (tester) async {
+    testWidgets('dialog layout is active and other layouts are locked', (
+      tester,
+    ) async {
       await pumpPush(tester);
       await tester.tap(find.text('New Notification'));
       await tester.pumpAndSettle();
 
-      await tester.enterText(find.byType(TextField).at(0), 'শিরোনাম');
-      await tester.enterText(find.byType(TextField).at(1), 'Title');
-      await tester.enterText(find.byType(TextField).at(2), 'বার্তা');
-      await tester.enterText(find.byType(TextField).at(3), 'Body');
+      await tester.tap(channelSegment('In-App'));
       await tester.pumpAndSettle();
 
-      var send = tester.widget<ElevatedButton>(
-        find.widgetWithText(ElevatedButton, 'Send Now'),
+      expect(find.text('In-app layout'), findsOneWidget);
+      expect(find.text('Dialog only'), findsOneWidget);
+
+      final dialogChip = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'Dialog'),
       );
-      expect(send.onPressed, isNotNull, reason: 'a valid push is sendable');
+      expect(dialogChip.selected, isTrue);
+
+      final imageOnlyChip = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'Image only'),
+      );
+      expect(imageOnlyChip.onSelected, isNull);
+
+      final cardChip = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'Card'),
+      );
+      expect(cardChip.onSelected, isNull);
+
+      final bannerChip = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'Banner'),
+      );
+      expect(bannerChip.onSelected, isNull);
+    });
+
+    testWidgets('the action is labelled Publish for in-app only', (
+      tester,
+    ) async {
+      await pumpPush(tester);
+      await tester.tap(find.text('New Notification'));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(ElevatedButton, 'Send Now'), findsOneWidget);
 
       await tester.tap(channelSegment('In-App'));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Image only'));
-      await tester.pumpAndSettle();
+      expect(find.widgetWithText(ElevatedButton, 'Publish'), findsOneWidget);
+      expect(find.widgetWithText(ElevatedButton, 'Send Now'), findsNothing);
 
-      expect(find.text('Image *'), findsOneWidget);
-      send = tester.widget<ElevatedButton>(
-        find.widgetWithText(ElevatedButton, 'Send Now'),
-      );
-      expect(send.onPressed, isNull);
+      // Push + In-App still reaches devices, so it stays "Send Now".
+      await tester.tap(channelSegment('Push + In-App'));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(ElevatedButton, 'Send Now'), findsOneWidget);
     });
   });
 }

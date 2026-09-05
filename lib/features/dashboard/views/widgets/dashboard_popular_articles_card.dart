@@ -20,83 +20,121 @@ class DashboardPopularArticlesCard extends GetView<DashboardController> {
       title: 'Popular Articles',
       action: 'View All',
       onAction: () => shell.select(NavId.articles),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Column(
-        children: [
-          for (final a in controller.popularArticles)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: Row(
-                children: [
-                  ArticleThumb(
-                    imagePath: a.imagePath,
-                    width: 56,
-                    height: 46,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          a.titleBn,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTheme.bengali(
-                            context,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
+      padding: const EdgeInsets.all(16),
+      child: Obx(() {
+        final articles = controller.popularArticles;
+        if (articles.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40),
+              child: Text(
+                'No published articles yet',
+                style: TextStyle(
+                  color: context.palette.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          );
+        }
+
+        return Column(
+          children: [
+            for (final a in articles)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: SizedBox(
+                  height: 44,
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: ArticleThumb(
+                          imagePath: a.imagePath,
+                          width: 44,
+                          height: 44,
                         ),
-                        Text(
-                          a.titleEn,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: context.palette.textSecondary,
-                            fontSize: 11.5,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Row(
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.visibility_outlined,
-                              size: 13,
-                              color: context.palette.textSecondary,
-                            ),
-                            const SizedBox(width: 3),
                             Text(
-                              compactNumber(a.views),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: context.palette.textSecondary,
+                              a.titleBn,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTheme.bengali(
+                                context,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                            const SizedBox(width: 10),
-                            Icon(
-                              Icons.bookmark_outline_rounded,
-                              size: 13,
-                              color: context.palette.textSecondary,
-                            ),
-                            const SizedBox(width: 3),
+                            const SizedBox(height: 2),
                             Text(
-                              compactNumber(a.bookmarks),
+                              a.titleEn,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 11,
                                 color: context.palette.textSecondary,
+                                fontSize: 11.5,
                               ),
                             ),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 8),
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.visibility_outlined,
+                                size: 12,
+                                color: context.palette.textSecondary,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                compactNumber(a.views),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: context.palette.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.bookmark_outline_rounded,
+                                size: 12,
+                                color: context.palette.textSecondary,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                compactNumber(a.bookmarks),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: context.palette.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-        ],
-      ),
+          ],
+        );
+      }),
     );
   }
 }

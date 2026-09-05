@@ -149,3 +149,23 @@ PillBadge reportTypeBadge(ReportType t) => switch (t) {
   ),
   ReportType.other => const PillBadge(label: 'Other', color: AppColors.info),
 };
+
+/// High-visibility red NEW tag badge for unread reports
+Widget reportNewBadge() => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.danger,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: const Text(
+        'NEW',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 9,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.5,
+          height: 1.1,
+        ),
+      ),
+    );
+

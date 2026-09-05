@@ -7,10 +7,16 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Any admin role, but ONLY when the admin record is active and carries a
+    // recognised role. Checking mere existence of admins/{uid} was weaker than
+    // the editor/superAdmin helpers below and granted read access to every
+    // user's menstrual-health data on the strength of an empty document.
     function isAdmin() {
       return isAuthenticated() && (
         (request.auth.token.role in ['viewer', 'editor', 'superAdmin']) ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['viewer', 'editor', 'superAdmin'] &&
+         get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true)
       );
     }
 
@@ -106,7 +112,13 @@ service cloud.firestore {
 
     match /admins/{adminId} {
       allow read: if isAuthenticated() && (request.auth.uid == adminId || isAdmin());
-      allow write: if isSuperAdmin() || (isAuthenticated() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+      // Super admin can modify any field. Admins can update their own profile fields (e.g. name, photoUrl),
+      // but cannot escalate their role, change active status, or alter createdAt.
+      allow update: if isSuperAdmin() || (
+        isAuthenticated() && request.auth.uid == adminId
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'active', 'createdAt'])
+      );
+      allow create, delete: if isSuperAdmin();
     }
 
     // ─── App Config & Settings ───────────────────────────────────────────────
@@ -121,6 +133,16 @@ service cloud.firestore {
       allow write: if isEditorOrSuperAdmin();
     }
 
+    // ─── Sathi AI Usage & Quota ───────────────────────────────────────────────
+    match /sathi_ai_usage_daily/{date} {
+      allow read: if isAdmin();
+      allow write: if isEditorOrSuperAdmin() || isAuthenticated();
+    }
+
+    match /sathi_ai_user_usage/{userId} {
+      allow read, write: if (isAuthenticated() && request.auth.uid == userId) || isAdmin();
+    }
+
     // ─── Promo Codes & Transactions ──────────────────────────────────────────
     match /promo_codes/{code} {
       allow read: if isAuthenticated();
@@ -130,6 +152,39 @@ service cloud.firestore {
     match /transactions/{txId} {
       allow read: if isAdmin();
       allow write: if isSuperAdmin();
+    }
+
+    // ─── Push Notification Registrations ─────────────────────────────────────
+    // One document per device, keyed by the mobile app's stable install id. The
+    // `adminSendPush` Cloud Function reads these through the Admin SDK (which
+    // bypasses rules) to build campaign audiences; these rules exist to stop a
+    // client from writing anyone else's registration or harvesting the token
+    // list, which would let it impersonate or enumerate users' devices.
+    match /fcm_tokens/{deviceId} {
+      allow get: if (isAuthenticated() && request.auth.uid == resource.data.userId)
+                 || isAdmin();
+      // No client-side listing: the collection maps devices to users and must
+      // not be enumerable from the mobile app.
+      allow list: if isAdmin();
+
+      allow create: if isAuthenticated()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.token is string
+                    && request.resource.data.token.size() > 0;
+      allow update: if isAuthenticated()
+                    && resource.data.userId == request.auth.uid
+                    && request.resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated()
+                    && resource.data.userId == request.auth.uid;
+    }
+
+    // ─── Push / In-App Campaigns ─────────────────────────────────────────────
+    // Authored here in the admin panel. The mobile app reads published
+    // campaigns to render in-app banners, so read is open to signed-in users;
+    // only the Cloud Function (Admin SDK) and editors may write.
+    match /push_campaigns/{campaignId} {
+      allow read: if isAuthenticated();
+      allow write: if isEditorOrSuperAdmin();
     }
   }
 }

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:joba_admin/core/repositories/usage_repository.dart';
 import 'package:joba_admin/core/services/functions_service.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
 import 'package:joba_admin/features/usage/models/usage_metrics.dart';
 
 /// Production Firebase Usage & Cost Repository.
@@ -28,6 +29,8 @@ class FirebaseUsageRepository implements UsageRepository {
     final startDate = midnight.subtract(Duration(days: days - 1));
     final existingMap = <String, UsageDay>{};
 
+    AppLoggerHelper.info('[UsageRepository] 📊 Fetching usage metrics for past $days days...');
+
     // 1. Fetch cached rollups when the admin rules allow direct reads.
     try {
       final snap = await _firestore
@@ -40,8 +43,9 @@ class FirebaseUsageRepository implements UsageRepository {
         final day = UsageDay.fromMap(doc.data(), docId: doc.id);
         existingMap[_dateKey(day.date)] = day;
       }
+      AppLoggerHelper.info('[UsageRepository] Found ${existingMap.length} cached daily rollups');
     } catch (e) {
-      debugPrint('Cached usage rollup read unavailable: $e');
+      AppLoggerHelper.warning('UsageRepository', 'Cached usage rollup read unavailable: $e');
     }
 
     // 2. Use the callable as the authoritative refresh/backfill path.
@@ -82,9 +86,10 @@ class FirebaseUsageRepository implements UsageRepository {
         }
       }
 
+      AppLoggerHelper.success('UsageRepository', 'Assembled $days-day continuous usage timeline (${result.length} points)');
       return result;
-    } catch (e) {
-      debugPrint('Error fetching daily usage from Firestore: $e');
+    } catch (e, st) {
+      AppLoggerHelper.failure('UsageRepository', 'Error fetching daily usage from Firestore: $e', error: e, stackTrace: st);
       return _generateFallbackSeries(days);
     }
   }
@@ -96,6 +101,7 @@ class FirebaseUsageRepository implements UsageRepository {
     try {
       // 1. Try Cloud Function first if available
       if (Get.isRegistered<FunctionsService>()) {
+        AppLoggerHelper.info('[UsageRepository] Invoking adminGetProjectUsage Cloud Function...');
         final fn = Get.find<FunctionsService>();
         final res = await fn.call<Map<String, dynamic>>(
           'adminGetProjectUsage',
@@ -109,14 +115,16 @@ class FirebaseUsageRepository implements UsageRepository {
               existingMap[_dateKey(day.date)] = day;
             }
           }
+          AppLoggerHelper.success('UsageRepository', 'Cloud Function returned ${list.length} usage records');
           if (existingMap.isNotEmpty) return;
         }
       }
 
       // 2. Direct Firestore Telemetry Backfill (calculates real operations from audit logs & collections)
+      AppLoggerHelper.info('[UsageRepository] Running direct Firestore telemetry backfill...');
       await _backfillFromLiveFirestore(existingMap, days);
     } catch (e) {
-      debugPrint('On-demand usage rollup error: $e');
+      AppLoggerHelper.warning('UsageRepository', 'On-demand usage rollup error: $e');
     }
   }
 

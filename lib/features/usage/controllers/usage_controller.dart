@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:joba_admin/core/repositories/usage_repository.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
 import 'package:joba_admin/features/usage/models/usage_metrics.dart';
 
 class UsageController extends GetxController {
@@ -20,10 +21,13 @@ class UsageController extends GetxController {
 
   Future<void> loadUsage() async {
     loading.value = true;
+    AppLoggerHelper.info('[UsageController] 📈 Loading usage telemetry and cloud cost data...');
     try {
       final days = await repo.fetchDailyUsage(days: 90);
       daily.assignAll(days);
-    } catch (_) {
+      AppLoggerHelper.success('UsageController', 'Loaded ${days.length} days of telemetry data');
+    } catch (e, st) {
+      AppLoggerHelper.failure('UsageController', 'Error loading usage, falling back to seed: $e', error: e, stackTrace: st);
       final fallback = await repo.seedDailyUsage();
       daily.assignAll(fallback);
     } finally {

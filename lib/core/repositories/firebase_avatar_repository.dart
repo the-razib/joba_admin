@@ -1,7 +1,10 @@
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:joba_admin/core/repositories/avatar_repository.dart';
+import 'package:joba_admin/core/services/audit_service.dart';
 import 'package:joba_admin/core/services/storage_service.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
+import 'package:joba_admin/features/audit_logs/models/audit_log.dart';
 import 'package:joba_admin/features/avatars/models/avatar_item.dart';
 import 'package:uuid/uuid.dart';
 
@@ -89,8 +92,7 @@ class FirebaseAvatarRepository implements AvatarRepository {
 
   @override
   Future<void> deleteCategory(String id) async {
-    final batch = _firestore.batch();
-    batch.delete(_firestore.collection(_categoriesCollection).doc(id));
+    AppLoggerHelper.info('[FirebaseAvatarRepository] 🗑️ Deleting avatar category: $id...');
 
     final avatarsSnap = await _firestore
         .collection(_avatarsCollection)
@@ -98,9 +100,36 @@ class FirebaseAvatarRepository implements AvatarRepository {
         .get();
 
     for (final doc in avatarsSnap.docs) {
+      final img = doc.data()['imageUrl'] as String? ?? doc.data()['assetPath'] as String?;
+      if (img != null && img.isNotEmpty && img.startsWith('http')) {
+        try {
+          await _storageService.deleteFile(img);
+        } catch (e) {
+          AppLoggerHelper.warning('Avatar image delete error ($img): $e');
+        }
+      }
+    }
+
+    // Purge storage directory for this category
+    try {
+      await _storageService.deleteFolder('avatars/presets/$id');
+    } catch (e) {
+      AppLoggerHelper.warning('Category folder delete error ($id): $e');
+    }
+
+    final batch = _firestore.batch();
+    batch.delete(_firestore.collection(_categoriesCollection).doc(id));
+    for (final doc in avatarsSnap.docs) {
       batch.delete(doc.reference);
     }
     await batch.commit();
+
+    AppLoggerHelper.success('FirebaseAvatarRepository', 'Deleted category $id and ${avatarsSnap.size} avatar(s)');
+    AuditService.log(
+      module: 'Avatar Management',
+      action: AuditAction.deleted,
+      details: 'Deleted avatar category $id and all associated storage files',
+    );
   }
 
   @override
@@ -191,16 +220,34 @@ class FirebaseAvatarRepository implements AvatarRepository {
     final snap = await docRef.get();
     if (!snap.exists) return;
 
-    final storagePath = snap.data()?['storagePath'] as String?;
-    if (storagePath != null && storagePath.isNotEmpty) {
+    final data = snap.data();
+    final imageUrl = data?['imageUrl'] as String? ?? data?['assetPath'] as String?;
+    final storagePath = data?['storagePath'] as String?;
+
+    AppLoggerHelper.info('[FirebaseAvatarRepository] 🗑️ Deleting avatar $id (imageUrl: $imageUrl, storagePath: $storagePath)...');
+
+    if (imageUrl != null && imageUrl.isNotEmpty && imageUrl.startsWith('http')) {
       try {
-        await _storageService.deleteFile(storagePath);
-      } catch (_) {
-        // Best-effort delete
+        await _storageService.deleteFile(imageUrl);
+      } catch (e) {
+        AppLoggerHelper.warning('Avatar image delete error ($imageUrl): $e');
       }
     }
 
+    if (storagePath != null && storagePath.isNotEmpty) {
+      try {
+        await _storageService.deleteFile(storagePath);
+      } catch (_) {}
+    }
+
     await docRef.delete();
+    AppLoggerHelper.success('FirebaseAvatarRepository', 'Deleted avatar $id from Firestore and Storage');
+
+    AuditService.log(
+      module: 'Avatar Management',
+      action: AuditAction.deleted,
+      details: 'Deleted avatar $id and purged image assets',
+    );
   }
 
   /// Initial migration / seed helper:

@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:joba_admin/core/repositories/avatar_repository.dart';
 import 'package:joba_admin/core/utils/app_toast.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
 import 'package:joba_admin/features/avatars/models/avatar_item.dart';
 import 'package:uuid/uuid.dart';
 
@@ -23,6 +24,7 @@ class AvatarsController extends GetxController {
   Future<void> load() async {
     try {
       loading.value = true;
+      AppLoggerHelper.info('[AvatarsController] 🎨 Loading avatar library and categories...');
       final cats = await repo.getCategories();
       categories.assignAll(cats);
 
@@ -33,7 +35,9 @@ class AvatarsController extends GetxController {
 
       final items = await repo.getAvatars();
       avatars.assignAll(items);
-    } catch (e) {
+      AppLoggerHelper.success('AvatarsController', 'Loaded ${categories.length} categories, ${avatars.length} avatars');
+    } catch (e, st) {
+      AppLoggerHelper.failure('AvatarsController', 'Could not load avatars: $e', error: e, stackTrace: st);
       AppToast.error('Load Failed', 'Could not load avatars: $e');
     } finally {
       loading.value = false;
@@ -55,10 +59,13 @@ class AvatarsController extends GetxController {
     if (i >= 0) {
       final old = avatars[i];
       avatars[i] = old.copyWith(active: !old.active);
+      AppLoggerHelper.info('[AvatarsController] 🔄 Toggling avatar $id to active: ${avatars[i].active}');
       try {
         await repo.toggleAvatar(id);
-      } catch (e) {
+        AppLoggerHelper.success('AvatarsController', 'Avatar $id active: ${avatars[i].active}');
+      } catch (e, st) {
         avatars[i] = old; // Revert on failure
+        AppLoggerHelper.failure('AvatarsController', 'Could not update avatar visibility: $e', error: e, stackTrace: st);
         AppToast.error('Update Failed', 'Could not update avatar visibility: $e');
       }
     }
@@ -69,12 +76,15 @@ class AvatarsController extends GetxController {
     if (i < 0) return;
     final old = avatars[i];
     avatars.removeAt(i);
+    AppLoggerHelper.info('[AvatarsController] 🗑️ Deleting avatar $id...');
 
     try {
       await repo.deleteAvatar(id);
+      AppLoggerHelper.success('AvatarsController', 'Deleted avatar $id');
       AppToast.success('Avatar Deleted', 'Avatar was successfully removed.');
-    } catch (e) {
+    } catch (e, st) {
       avatars.insert(i, old); // Revert on failure
+      AppLoggerHelper.failure('AvatarsController', 'Could not delete avatar: $e', error: e, stackTrace: st);
       AppToast.error('Delete Failed', 'Could not delete avatar: $e');
     }
   }
@@ -84,13 +94,16 @@ class AvatarsController extends GetxController {
     final id = cleanName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
     if (id.isEmpty || categories.any((c) => c.id == id)) return;
 
+    AppLoggerHelper.info('[AvatarsController] ➕ Adding avatar category: "$cleanName"');
     try {
       await repo.addCategory(cleanName);
       final freshCats = await repo.getCategories();
       categories.assignAll(freshCats);
       selectedCategoryId.value = id;
+      AppLoggerHelper.success('AvatarsController', 'Created avatar category: "$cleanName"');
       AppToast.success('Category Created', 'Category "$cleanName" was added.');
-    } catch (e) {
+    } catch (e, st) {
+      AppLoggerHelper.failure('AvatarsController', 'Could not add category: $e', error: e, stackTrace: st);
       AppToast.error('Create Failed', 'Could not add category: $e');
     }
   }
@@ -100,16 +113,20 @@ class AvatarsController extends GetxController {
     if (i >= 0) {
       final old = categories[i];
       categories[i] = old.copyWith(active: !old.active);
+      AppLoggerHelper.info('[AvatarsController] 🔄 Toggling avatar category $id active: ${categories[i].active}');
       try {
         await repo.toggleCategory(id);
-      } catch (e) {
+        AppLoggerHelper.success('AvatarsController', 'Avatar category $id active: ${categories[i].active}');
+      } catch (e, st) {
         categories[i] = old;
+        AppLoggerHelper.failure('AvatarsController', 'Could not toggle category: $e', error: e, stackTrace: st);
         AppToast.error('Update Failed', 'Could not toggle category: $e');
       }
     }
   }
 
   Future<void> deleteCategory(String id) async {
+    AppLoggerHelper.info('[AvatarsController] 🗑️ Deleting avatar category: $id');
     try {
       await repo.deleteCategory(id);
       categories.removeWhere((c) => c.id == id);
@@ -117,8 +134,10 @@ class AvatarsController extends GetxController {
       if (selectedCategoryId.value == id && categories.isNotEmpty) {
         selectedCategoryId.value = categories.first.id;
       }
+      AppLoggerHelper.success('AvatarsController', 'Deleted avatar category: $id');
       AppToast.success('Category Deleted', 'Category and its avatars were removed.');
-    } catch (e) {
+    } catch (e, st) {
+      AppLoggerHelper.failure('AvatarsController', 'Could not delete category: $e', error: e, stackTrace: st);
       AppToast.error('Delete Failed', 'Could not delete category: $e');
     }
   }
@@ -128,16 +147,19 @@ class AvatarsController extends GetxController {
     List<AvatarUploadItem> items,
   ) async {
     if (items.isEmpty) return;
+    AppLoggerHelper.info('[AvatarsController] 📤 Uploading batch of ${items.length} avatars for category $categoryId...');
     try {
       uploading.value = true;
       await repo.uploadAvatars(categoryId, items);
       final freshAvatars = await repo.getAvatars();
       avatars.assignAll(freshAvatars);
+      AppLoggerHelper.success('AvatarsController', 'Successfully published ${items.length} avatar(s)');
       AppToast.success(
         'Upload Complete',
         'Successfully published ${items.length} avatar(s).',
       );
-    } catch (e) {
+    } catch (e, st) {
+      AppLoggerHelper.failure('AvatarsController', 'Error publishing avatars: $e', error: e, stackTrace: st);
       AppToast.error('Upload Failed', 'Error publishing avatars: $e');
     } finally {
       uploading.value = false;

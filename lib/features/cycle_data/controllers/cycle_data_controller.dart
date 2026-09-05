@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
 import 'package:joba_admin/features/users/models/app_user.dart';
 import 'package:joba_admin/core/repositories/user_repository.dart';
 
@@ -21,11 +22,13 @@ class CycleDataController extends GetxController {
 
   Future<void> _load() async {
     loading.value = true;
+    AppLoggerHelper.info('[CycleDataController] 🩸 Loading cycle analytics and cohort data...');
     try {
       final list = await repo.fetchUsers();
       users.assignAll(list);
-    } catch (e) {
-      debugPrint('Error loading cycle users: $e');
+      AppLoggerHelper.success('CycleDataController', 'Loaded cycle metrics across ${list.length} users');
+    } catch (e, st) {
+      AppLoggerHelper.failure('CycleDataController', 'Error loading cycle users: $e', error: e, stackTrace: st);
     } finally {
       loading.value = false;
     }

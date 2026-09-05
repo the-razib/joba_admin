@@ -1,5 +1,6 @@
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
 import 'package:uuid/uuid.dart';
 
 /// Central Firebase Storage Service for asset and media uploads.
@@ -28,6 +29,7 @@ class StorageService {
     final uniqueId = const Uuid().v4().substring(0, 8);
 
     final path = '$folder/$yearMonth/${uniqueId}_$sanitizedName';
+    AppLoggerHelper.info('[StorageService] 📤 Uploading $name (${bytes.length} bytes) to $path');
     final ref = storage.ref().child(path);
 
     final metadata = SettableMetadata(
@@ -39,35 +41,72 @@ class StorageService {
     );
 
     final uploadTask = await ref.putData(bytes, metadata);
-    return await uploadTask.ref.getDownloadURL();
+    final downloadUrl = await uploadTask.ref.getDownloadURL();
+    AppLoggerHelper.success('StorageService', 'Uploaded $name -> $downloadUrl');
+    return downloadUrl;
+  }
+
+  /// Uploads binary data to an explicit full path and returns the download URL.
+  Future<String> uploadBytesToPath({
+    required String fullPath,
+    required Uint8List bytes,
+    String? contentType,
+  }) async {
+    AppLoggerHelper.info('[StorageService] 📤 Uploading (${bytes.length} bytes) to $fullPath');
+    final ref = storage.ref().child(fullPath);
+    final metadata = SettableMetadata(
+      contentType: contentType ?? _inferContentType(fullPath),
+      customMetadata: {
+        'uploadedAt': DateTime.now().toIso8601String(),
+      },
+    );
+    final uploadTask = await ref.putData(bytes, metadata);
+    final downloadUrl = await uploadTask.ref.getDownloadURL();
+    AppLoggerHelper.success('StorageService', 'Uploaded to $fullPath -> $downloadUrl');
+    return downloadUrl;
   }
 
   /// Deletes a file from Storage by its download URL or reference path.
   Future<void> deleteFile(String urlOrPath) async {
     try {
+      AppLoggerHelper.info('[StorageService] 🗑️ Deleting file: $urlOrPath');
       if (urlOrPath.startsWith('http')) {
-        final ref = storage.refFromURL(urlOrPath);
-        await ref.delete();
+        try {
+          final ref = storage.refFromURL(urlOrPath);
+          await ref.delete();
+          AppLoggerHelper.success('StorageService', 'File deleted successfully via refFromURL: $urlOrPath');
+          return;
+        } catch (e) {
+          AppLoggerHelper.warning('[StorageService] refFromURL failed ($e), trying path extraction fallback...');
+          final uri = Uri.tryParse(urlOrPath);
+          if (uri != null && uri.path.contains('/o/')) {
+            final rawPath = uri.path.split('/o/').last;
+            final decodedPath = Uri.decodeComponent(rawPath);
+            final ref = storage.ref().child(decodedPath);
+            await ref.delete();
+            AppLoggerHelper.success('StorageService', 'File deleted successfully via path fallback: $decodedPath');
+            return;
+          }
+        }
       } else {
         final ref = storage.ref().child(urlOrPath);
         await ref.delete();
+        AppLoggerHelper.success('StorageService', 'File deleted successfully: $urlOrPath');
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('⚠️ [StorageService] Delete file warning: $e');
-      }
+      AppLoggerHelper.warning('[StorageService] Delete file warning: $e');
     }
   }
 
   /// Deletes an entire folder and all nested files/subfolders recursively from Storage.
   Future<void> deleteFolder(String folderPath) async {
     try {
+      AppLoggerHelper.info('[StorageService] 🗑️ Deleting folder: $folderPath');
       final ref = storage.ref().child(folderPath);
       await _deleteFolderRecursively(ref);
+      AppLoggerHelper.success('StorageService', 'Folder deleted successfully: $folderPath');
     } catch (e) {
-      if (kDebugMode) {
-        print('⚠️ [StorageService] Delete folder warning ($folderPath): $e');
-      }
+      AppLoggerHelper.warning('[StorageService] Delete folder warning ($folderPath): $e');
     }
   }
 
@@ -83,9 +122,7 @@ class StorageService {
         await _deleteFolderRecursively(prefix);
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('⚠️ [StorageService] Recursive delete warning: $e');
-      }
+      AppLoggerHelper.warning('[StorageService] Recursive delete warning: $e');
     }
   }
 

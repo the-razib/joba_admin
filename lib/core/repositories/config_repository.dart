@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:joba_admin/core/services/audit_service.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
 import 'package:joba_admin/features/audit_logs/models/audit_log.dart';
 
 /// Repository interface for remote application configuration documents.
@@ -58,25 +59,35 @@ class FirebaseConfigRepository implements ConfigRepository {
 
   @override
   Future<Map<String, dynamic>?> getDoc(String docId) async {
+    AppLoggerHelper.info('[FirebaseConfigRepository] ⚙️ Fetching app_config/$docId');
     try {
       final doc = await _firestore.collection('app_config').doc(docId).get();
+      AppLoggerHelper.success('FirebaseConfigRepository', 'Fetched app_config/$docId (exists: ${doc.exists})');
       return doc.exists ? doc.data() : null;
-    } catch (_) {
+    } catch (e, st) {
+      AppLoggerHelper.failure('FirebaseConfigRepository', 'Failed to get app_config/$docId: $e', error: e, stackTrace: st);
       return null;
     }
   }
 
   @override
   Future<void> saveDoc(String docId, Map<String, dynamic> data) async {
-    await _firestore.collection('app_config').doc(docId).set(
-      {
-        ...data,
-        'updatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+    AppLoggerHelper.info('[FirebaseConfigRepository] 💾 Saving app_config/$docId with ${data.keys.length} keys');
+    try {
+      await _firestore.collection('app_config').doc(docId).set(
+        {
+          ...data,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+      AppLoggerHelper.success('FirebaseConfigRepository', 'Saved app_config/$docId successfully');
+    } catch (e, st) {
+      AppLoggerHelper.failure('FirebaseConfigRepository', 'Failed to save app_config/$docId: $e', error: e, stackTrace: st);
+      rethrow;
+    }
 
-    AuditService.log(
+    await AuditService.log(
       module: 'App Settings',
       action: AuditAction.updated,
       details: 'Updated app configuration for $docId',

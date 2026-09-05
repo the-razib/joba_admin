@@ -5,6 +5,7 @@ import 'package:joba_admin/core/repositories/article_repository.dart';
 import 'package:joba_admin/core/repositories/firebase_article_repository.dart';
 import 'package:joba_admin/core/services/storage_service.dart';
 import 'package:joba_admin/core/utils/app_toast.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
 import 'package:joba_admin/features/articles/models/article.dart';
 import 'package:joba_admin/features/articles/models/article_category.dart';
 import 'package:uuid/uuid.dart';
@@ -38,6 +39,7 @@ class ArticlesController extends GetxController {
 
   Future<void> loadData() async {
     loading.value = true;
+    AppLoggerHelper.info('[ArticlesController] 📚 Fetching articles, categories, and tags...');
     try {
       final results = await Future.wait([
         repo.fetchCategories(),
@@ -49,6 +51,11 @@ class ArticlesController extends GetxController {
       articles.assignAll(results[1] as List<Article>);
       tags.assignAll(results[2] as List<String>);
 
+      AppLoggerHelper.success(
+        'ArticlesController',
+        'Loaded ${categories.length} categories, ${articles.length} articles, ${tags.length} tags',
+      );
+
       if (categories.isNotEmpty) {
         if (selectedCategoryId.value == null ||
             !categories.any((c) => c.id == selectedCategoryId.value)) {
@@ -56,8 +63,8 @@ class ArticlesController extends GetxController {
         }
         _selectFirstArticle();
       }
-    } catch (e) {
-      debugPrint('Error loading articles: $e');
+    } catch (e, st) {
+      AppLoggerHelper.failure('ArticlesController', 'Error loading articles: $e', error: e, stackTrace: st);
       AppToast.error('Failed to load articles', e.toString());
     } finally {
       loading.value = false;
@@ -218,6 +225,7 @@ class ArticlesController extends GetxController {
 
       selectedArticleId.value = bumped.id;
       editing.value = null;
+      AppLoggerHelper.success('ArticlesController', 'Article saved: "${bumped.titleEn}" (${bumped.id})');
       AppToast.success(
         'Article Saved',
         editingIsNew.value
@@ -225,8 +233,8 @@ class ArticlesController extends GetxController {
             : 'Article "${bumped.titleEn}" updated.',
       );
       return true;
-    } catch (e) {
-      debugPrint('Error saving article: $e');
+    } catch (e, st) {
+      AppLoggerHelper.failure('ArticlesController', 'Error saving article: $e', error: e, stackTrace: st);
       AppToast.error('Save Failed', e.toString());
       return false;
     } finally {
@@ -248,6 +256,7 @@ class ArticlesController extends GetxController {
   }
 
   Future<void> deleteArticle(String id) async {
+    AppLoggerHelper.info('[ArticlesController] 🗑️ Deleting article: $id');
     try {
       final target = articles.firstWhereOrNull((a) => a.id == id);
 
@@ -270,12 +279,13 @@ class ArticlesController extends GetxController {
 
       articles.removeWhere((a) => a.id == id);
       if (selectedArticleId.value == id) _selectFirstArticle();
+      AppLoggerHelper.success('ArticlesController', 'Article deleted: $id');
       AppToast.success(
         'Article Deleted',
         'Article and all associated media files permanently removed.',
       );
-    } catch (e) {
-      debugPrint('Error deleting article: $e');
+    } catch (e, st) {
+      AppLoggerHelper.failure('ArticlesController', 'Error deleting article: $e', error: e, stackTrace: st);
       AppToast.error('Delete Failed', e.toString());
       await loadData();
     }
@@ -303,9 +313,11 @@ class ArticlesController extends GetxController {
 
     try {
       final orderedIds = list.map((a) => a.id).toList();
+      AppLoggerHelper.info('[ArticlesController] 🔄 Reordering articles: $orderedIds');
       await repo.reorderArticles(orderedIds);
-    } catch (e) {
-      debugPrint('Error reordering articles: $e');
+      AppLoggerHelper.success('ArticlesController', 'Articles reordered successfully');
+    } catch (e, st) {
+      AppLoggerHelper.failure('ArticlesController', 'Error reordering articles: $e', error: e, stackTrace: st);
       AppToast.error('Reorder Failed', e.toString());
       await loadData();
     }
@@ -337,8 +349,8 @@ class ArticlesController extends GetxController {
           name: imageName ?? 'banner.jpg',
           bytes: imageBytes,
         );
-      } catch (e) {
-        debugPrint('Error uploading category banner: $e');
+      } catch (e, st) {
+        AppLoggerHelper.failure('ArticlesController', 'Error uploading category banner: $e', error: e, stackTrace: st);
         AppToast.error(
           'Image Upload Failed',
           'Failed to upload category cover: $e',
@@ -360,11 +372,13 @@ class ArticlesController extends GetxController {
     );
 
     try {
+      AppLoggerHelper.info('[ArticlesController] ➕ Adding category: "${cat.nameEn}" (${cat.id})');
       await repo.saveCategory(cat);
       categories.add(cat);
+      AppLoggerHelper.success('ArticlesController', 'Category created: "${cat.nameEn}"');
       AppToast.success('Category Created', 'Category "${cat.nameEn}" added.');
-    } catch (e) {
-      debugPrint('Error adding category: $e');
+    } catch (e, st) {
+      AppLoggerHelper.failure('ArticlesController', 'Error adding category: $e', error: e, stackTrace: st);
       AppToast.error('Create Category Failed', e.toString());
     }
   }
@@ -375,6 +389,7 @@ class ArticlesController extends GetxController {
     String? imageName,
   }) async {
     var updated = cat;
+    final previousUrl = cat.imagePath;
     if (imageBytes != null && imageBytes.isNotEmpty) {
       try {
         final url = await storageService.uploadBytes(
@@ -383,8 +398,8 @@ class ArticlesController extends GetxController {
           bytes: imageBytes,
         );
         updated = updated.copyWith(imagePath: url);
-      } catch (e) {
-        debugPrint('Error uploading category banner: $e');
+      } catch (e, st) {
+        AppLoggerHelper.failure('ArticlesController', 'Error uploading category banner: $e', error: e, stackTrace: st);
         AppToast.error(
           'Image Upload Failed',
           'Failed to upload category cover: $e',
@@ -394,15 +409,23 @@ class ArticlesController extends GetxController {
     }
 
     try {
+      AppLoggerHelper.info('[ArticlesController] ✏️ Updating category: "${updated.nameEn}" (${updated.id})');
       await repo.saveCategory(updated);
       final i = categories.indexWhere((c) => c.id == updated.id);
       if (i >= 0) categories[i] = updated;
+
+      // Best-effort cleanup: delete replaced category banner
+      if (updated.imagePath != previousUrl) {
+        _deleteStaleStorageFile(previousUrl, updated.imagePath);
+      }
+
+      AppLoggerHelper.success('ArticlesController', 'Category updated: "${updated.nameEn}"');
       AppToast.success(
         'Category Updated',
         'Category "${updated.nameEn}" updated.',
       );
-    } catch (e) {
-      debugPrint('Error updating category: $e');
+    } catch (e, st) {
+      AppLoggerHelper.failure('ArticlesController', 'Error updating category: $e', error: e, stackTrace: st);
       AppToast.error('Update Category Failed', e.toString());
     }
   }
@@ -413,13 +436,16 @@ class ArticlesController extends GetxController {
       final newActive = !categories[i].active;
       categories[i] = categories[i].copyWith(active: newActive);
       try {
+        AppLoggerHelper.info('[ArticlesController] 🔄 Toggling category $id to active: $newActive');
         await repo.toggleCategory(id, newActive);
+        AppLoggerHelper.success('ArticlesController', 'Category $id active state is now: $newActive');
         AppToast.success(
           newActive ? 'Category Activated' : 'Category Deactivated',
           'Category "${categories[i].nameEn}" is now ${newActive ? 'active' : 'inactive'}.',
         );
-      } catch (e) {
+      } catch (e, st) {
         categories[i] = categories[i].copyWith(active: !newActive);
+        AppLoggerHelper.failure('ArticlesController', 'Failed to toggle category: $e', error: e, stackTrace: st);
         AppToast.error('Failed to toggle category', e.toString());
       }
     }
@@ -436,15 +462,17 @@ class ArticlesController extends GetxController {
     }
 
     try {
+      AppLoggerHelper.info('[ArticlesController] 🗑️ Deleting category: $id');
       await repo.deleteCategory(id);
       categories.removeWhere((c) => c.id == id);
       if (selectedCategoryId.value == id && categories.isNotEmpty) {
         selectedCategoryId.value = categories.first.id;
         _selectFirstArticle();
       }
+      AppLoggerHelper.success('ArticlesController', 'Category deleted: $id');
       AppToast.success('Category Deleted', 'Category has been removed.');
-    } catch (e) {
-      debugPrint('Error deleting category: $e');
+    } catch (e, st) {
+      AppLoggerHelper.failure('ArticlesController', 'Error deleting category: $e', error: e, stackTrace: st);
       AppToast.error('Delete Category Failed', e.toString());
       await loadData();
     }

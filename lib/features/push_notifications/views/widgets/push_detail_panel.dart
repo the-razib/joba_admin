@@ -3,12 +3,12 @@ import 'package:get/get.dart';
 import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
-import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/core/utils/format.dart';
 import 'package:joba_admin/core/widgets/badges.dart';
 import 'package:joba_admin/core/widgets/confirm_dialog.dart';
 import 'package:joba_admin/core/widgets/detail_panel.dart';
 import 'package:joba_admin/features/push_notifications/controllers/push_controller.dart';
+import 'package:joba_admin/features/push_notifications/views/widgets/dispatch_feedback.dart';
 import 'package:joba_admin/features/push_notifications/models/push_notification.dart';
 import 'package:joba_admin/features/push_notifications/views/widgets/notification_preview.dart';
 import 'package:joba_admin/features/push_notifications/views/widgets/push_composer.dart';
@@ -97,26 +97,31 @@ class _PushDetailBodyState extends State<PushDetailBody> {
                 actionLabel: action,
               ),
             const SizedBox(height: 18),
+            // Real dispatch figures from FCM. "Accepted" is as far as any
+            // server-side API can see — handset delivery and opens are not
+            // reported by FCM HTTP v1.
             Row(
               children: [
                 _statTile(
                   context,
-                  'Delivered',
-                  compactNumber(p.delivered),
+                  'Accepted',
+                  compactNumber(p.sentCount),
                   AppColors.info,
                 ),
                 const SizedBox(width: 10),
                 _statTile(
                   context,
-                  'Opened',
-                  compactNumber(p.opened),
+                  'Rejected',
+                  compactNumber(p.failedCount),
                   AppColors.accent,
                 ),
                 const SizedBox(width: 10),
                 _statTile(
                   context,
-                  'Open Rate',
-                  '${p.openRate.toStringAsFixed(1)}%',
+                  'Acceptance',
+                  p.totalAttempted == 0
+                      ? '—'
+                      : '${p.acceptanceRate.toStringAsFixed(1)}%',
                   AppColors.success,
                 ),
               ],
@@ -126,10 +131,13 @@ class _PushDetailBodyState extends State<PushDetailBody> {
               ('Channel', p.channel.label),
               if (p.channel.hasInApp) ('In-app layout', p.inAppLayout.label),
               ('Audience', p.audience.name),
+              ('Status', p.status.label),
               ('Image', p.hasImage ? p.imageUrl! : '—'),
               ('Action', p.hasAction ? (p.actionUrl ?? '—') : '—'),
               ('Notification ID', p.id),
+              ('Message ID', p.messageId ?? '—'),
               ('Sent at', p.sentAt == null ? '—' : formatDateTime(p.sentAt!)),
+              if (p.errorMessage != null) ('Error', p.errorMessage!),
             ])
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
@@ -232,10 +240,10 @@ class PushDetailFooter extends GetView<PushController> {
               child: ElevatedButton.icon(
                 onPressed: p.canSend
                     ? () async {
-                        await controller.sendDraft(id);
-                        AppToast.success(
-                          'Sent',
-                          'Notification sent (mock).',
+                        final result = await controller.sendDraft(id);
+                        reportDispatch(
+                          result,
+                          failureReason: controller.lastError.value,
                         );
                         if (context.mounted) {
                           Navigator.of(context, rootNavigator: true).pop();
@@ -259,10 +267,11 @@ class PushDetailFooter extends GetView<PushController> {
           Expanded(
             child: OutlinedButton.icon(
               onPressed: () async {
-                await controller.resend(id);
-                AppToast.success(
-                  'Resent',
-                  'Notification queued again (mock).',
+                final result = await controller.resend(id);
+                reportDispatch(
+                  result,
+                  resend: true,
+                  failureReason: controller.lastError.value,
                 );
               },
               icon: const Icon(Icons.replay_outlined, size: 15),

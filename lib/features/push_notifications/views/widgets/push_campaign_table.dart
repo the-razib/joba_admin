@@ -3,12 +3,12 @@ import 'package:get/get.dart';
 import 'package:joba_admin/features/push_notifications/models/push_notification.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
-import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/core/utils/format.dart';
 import 'package:joba_admin/core/widgets/adaptive_data_table.dart';
 import 'package:joba_admin/core/widgets/badges.dart';
 import 'package:joba_admin/core/widgets/confirm_dialog.dart';
 import 'package:joba_admin/features/push_notifications/controllers/push_controller.dart';
+import 'package:joba_admin/features/push_notifications/views/widgets/dispatch_feedback.dart';
 import 'package:joba_admin/features/push_notifications/views/widgets/notification_preview.dart';
 import 'package:joba_admin/features/push_notifications/views/widgets/push_campaign_mobile_card.dart';
 import 'package:joba_admin/features/push_notifications/views/widgets/push_composer.dart';
@@ -139,12 +139,12 @@ class PushCampaignTable extends GetView<PushController> {
               ),
             ),
             AdaptiveColumn<PushNotification>(
-              label: 'Open Rate',
+              label: 'Accepted',
               flex: 2,
               tabletHidden: true,
               build: (context, p) => Text(
-                p.status == PushStatus.sent
-                    ? '${p.openRate.toStringAsFixed(1)}%'
+                p.status.isDelivered
+                    ? '${p.sentCount} / ${p.totalAttempted}'
                     : '—',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -217,10 +217,11 @@ class _RowActions extends GetView<PushController> {
               color: AppColors.warning,
             ),
             onPressed: () async {
-              await controller.resend(p.id);
-              AppToast.success(
-                'Resent',
-                'Notification queued again (mock).',
+              final result = await controller.resend(p.id);
+              reportDispatch(
+                result,
+                resend: true,
+                failureReason: controller.lastError.value,
               );
             },
           ),

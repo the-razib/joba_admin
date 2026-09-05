@@ -30,13 +30,15 @@ class DashboardScreen extends GetView<DashboardController> {
                 const DashboardStatsGrid(),
                 const SizedBox(height: 16),
                 Responsive.isDesktop(context)
-                    ? const Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(flex: 3, child: UserActivityChartCard()),
-                          SizedBox(width: 16),
-                          Expanded(flex: 2, child: CountryDistributionCard()),
-                        ],
+                    ? const IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(flex: 3, child: UserActivityChartCard()),
+                            SizedBox(width: 16),
+                            Expanded(flex: 2, child: CountryDistributionCard()),
+                          ],
+                        ),
                       )
                     : const Column(
                         children: [
@@ -47,15 +49,17 @@ class DashboardScreen extends GetView<DashboardController> {
                       ),
                 const SizedBox(height: 16),
                 Responsive.isDesktop(context)
-                    ? const Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: DashboardRecentUsersCard()),
-                          SizedBox(width: 16),
-                          Expanded(child: DashboardPopularArticlesCard()),
-                          SizedBox(width: 16),
-                          Expanded(child: DashboardRecentReportsCard()),
-                        ],
+                    ? const IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(child: DashboardRecentUsersCard()),
+                            SizedBox(width: 16),
+                            Expanded(child: DashboardPopularArticlesCard()),
+                            SizedBox(width: 16),
+                            Expanded(child: DashboardRecentReportsCard()),
+                          ],
+                        ),
                       )
                     : const Column(
                         children: [

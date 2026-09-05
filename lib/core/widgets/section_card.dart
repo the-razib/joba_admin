@@ -25,25 +25,29 @@ class SectionCard extends StatelessWidget {
         padding: padding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      color: context.palette.textPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
+            SizedBox(
+              height: 36,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        color: context.palette.textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-                if (action != null)
-                  TextButton(
-                    onPressed: onAction,
-                    child: Text(action!),
-                  ),
-              ],
+                  if (action != null)
+                    TextButton(
+                      onPressed: onAction,
+                      child: Text(action!),
+                    ),
+                ],
+              ),
             ),
             const SizedBox(height: 12),
             child,

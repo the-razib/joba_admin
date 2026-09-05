@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/services/functions_service.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
 import 'package:joba_admin/features/admin_management/models/admin_profile.dart';
 import 'package:joba_admin/features/admin_management/models/admin_user.dart';
 import 'package:uuid/uuid.dart';
@@ -43,6 +43,7 @@ class FirebaseAdminRepository implements AdminRepository {
 
   @override
   Future<List<AdminProfile>> listAdmins() async {
+    AppLoggerHelper.info('[AdminRepository] 👥 Fetching admin users list...');
     try {
       final snap = await _firestore
           .collection('admins')
@@ -51,16 +52,20 @@ class FirebaseAdminRepository implements AdminRepository {
 
       if (snap.docs.isEmpty) {
         final allDocs = await _firestore.collection('admins').get();
-        return allDocs.docs
+        final list = allDocs.docs
             .map((doc) => AdminProfile.fromMap(doc.data(), docId: doc.id))
             .toList();
+        AppLoggerHelper.success('AdminRepository', 'Fetched ${list.length} admins (fallback unordered)');
+        return list;
       }
 
-      return snap.docs
+      final list = snap.docs
           .map((doc) => AdminProfile.fromMap(doc.data(), docId: doc.id))
           .toList();
-    } catch (e) {
-      debugPrint('Error listing admins from Firestore: $e');
+      AppLoggerHelper.success('AdminRepository', 'Fetched ${list.length} admins');
+      return list;
+    } catch (e, st) {
+      AppLoggerHelper.failure('AdminRepository', 'Error listing admins from Firestore: $e', error: e, stackTrace: st);
       final fallback = await _firestore.collection('admins').get();
       return fallback.docs
           .map((doc) => AdminProfile.fromMap(doc.data(), docId: doc.id))
@@ -70,10 +75,12 @@ class FirebaseAdminRepository implements AdminRepository {
 
   @override
   Future<void> setActive(String uid, bool active) async {
+    AppLoggerHelper.info('[AdminRepository] 🔄 Setting active status for admin $uid to $active');
     await _firestore.collection('admins').doc(uid).set({
       'active': active,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+    AppLoggerHelper.success('AdminRepository', 'Admin $uid active status set to $active');
   }
 
   @override
@@ -88,6 +95,7 @@ class FirebaseAdminRepository implements AdminRepository {
         ? tempPassword.trim()
         : 'Joba#${const Uuid().v4().substring(0, 8)}!';
 
+    AppLoggerHelper.info('[AdminRepository] ✉️ Inviting admin user: $normalizedEmail (${role.label})...');
     String? createdUid;
 
     // 1. Direct Auth User Creation via temporary secondary FirebaseApp instance
@@ -108,10 +116,12 @@ class FirebaseAdminRepository implements AdminRepository {
         if (cred.user != null) {
           await cred.user!.updateDisplayName(name);
         }
+        AppLoggerHelper.success('AdminRepository', 'Created Auth credentials for $normalizedEmail (UID: $createdUid)');
       } finally {
         await tempApp.delete();
       }
     } on FirebaseAuthException catch (e) {
+      AppLoggerHelper.warning('AdminRepository', 'FirebaseAuthException during admin creation: ${e.code}');
       if (e.code == 'email-already-in-use') {
         throw Exception('An account with email "$normalizedEmail" already exists in Firebase.');
       } else if (e.code == 'weak-password') {
@@ -120,13 +130,14 @@ class FirebaseAdminRepository implements AdminRepository {
         throw Exception(e.message ?? 'Failed to create user in Firebase Auth.');
       }
     } catch (e) {
-      debugPrint('Direct Auth Creation note: $e');
+      AppLoggerHelper.warning('AdminRepository', 'Direct Auth Creation note: $e');
     }
 
     // Fallback: If direct creation couldn't get a UID, try Cloud Function if available
     if (createdUid == null || createdUid.isEmpty) {
       try {
         if (Get.isRegistered<FunctionsService>()) {
+          AppLoggerHelper.info('[AdminRepository] Invoking adminInviteAdmin Cloud Function fallback...');
           final res = await Get.find<FunctionsService>().call<Map<dynamic, dynamic>>(
             'adminInviteAdmin',
             {
@@ -137,9 +148,10 @@ class FirebaseAdminRepository implements AdminRepository {
             },
           );
           createdUid = res['uid']?.toString();
+          AppLoggerHelper.success('AdminRepository', 'Admin invited via Cloud Function: UID $createdUid');
         }
       } catch (err) {
-        debugPrint('Cloud Function invite fallback note: $err');
+        AppLoggerHelper.warning('AdminRepository', 'Cloud Function invite fallback note: $err');
       }
     }
 
@@ -155,6 +167,7 @@ class FirebaseAdminRepository implements AdminRepository {
       'createdAt': FieldValue.serverTimestamp(),
       'lastActive': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+    AppLoggerHelper.success('AdminRepository', 'Saved admin profile for $normalizedEmail (Doc ID: $finalUid)');
 
     // 3. Write audit log entry
     try {
@@ -198,11 +211,13 @@ class FirebaseAdminRepository implements AdminRepository {
     required String targetUid,
     required AdminRole role,
   }) async {
+    AppLoggerHelper.info('[AdminRepository] 🛡️ Updating role for admin $targetUid to ${role.name}');
     // 1. Direct Firestore update
     await _firestore.collection('admins').doc(targetUid).set({
       'role': role.name,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+    AppLoggerHelper.success('AdminRepository', 'Updated role in Firestore for admin $targetUid');
 
     // 2. Cloud Function sync for Custom Claims (best effort)
     try {
@@ -211,9 +226,10 @@ class FirebaseAdminRepository implements AdminRepository {
           'targetUid': targetUid,
           'role': role.name,
         });
+        AppLoggerHelper.success('AdminRepository', 'Custom claims synced via adminSetRole Cloud Function');
       }
     } catch (e) {
-      debugPrint('Cloud Function setRole note: $e');
+      AppLoggerHelper.warning('AdminRepository', 'Cloud Function setRole note: $e');
     }
   }
 }

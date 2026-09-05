@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter/foundation.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
 
 /// Central Firestore and Firebase Services Access Point for Joba Admin.
 ///
@@ -24,20 +24,18 @@ class FirestoreService {
       persistenceEnabled: false,
       cacheSizeBytes: 20 * 1024 * 1024, // 20 MB in-memory cache
     );
+    AppLoggerHelper.info('[FirestoreService] Configured online cache (20MB, persistence: false)');
 
     if (useEmulators) {
-      if (kDebugMode) {
-        print('⚡ [FirestoreService] Connecting to local Firebase Emulators...');
-      }
+      AppLoggerHelper.info('[FirestoreService] Connecting to local Firebase Emulators...');
       try {
         db.useFirestoreEmulator('localhost', 8080);
         FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
         FirebaseStorage.instance.useStorageEmulator('localhost', 9199);
         FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
+        AppLoggerHelper.success('FirestoreService', 'Connected to Firebase Emulators');
       } catch (e) {
-        if (kDebugMode) {
-          print('⚠️ [FirestoreService] Emulator connection error: $e');
-        }
+        AppLoggerHelper.warning('[FirestoreService] Emulator connection error: $e');
       }
     }
   }

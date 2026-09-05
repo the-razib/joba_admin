@@ -203,8 +203,11 @@ void main() {
         actionUrl: 'joba://home',
         status: PushStatus.sent,
         sentAt: now,
-        delivered: 10000,
-        opened: 4500,
+        createdAt: now,
+        createdBy: 'admin-uid',
+        sentCount: 10000,
+        failedCount: 210,
+        messageId: 'projects/joba/messages/1',
       );
 
       final map = push.toMap();
@@ -217,7 +220,12 @@ void main() {
       expect(deserialized.titleEn, push.titleEn);
       expect(deserialized.channel, push.channel);
       expect(deserialized.inAppLayout, push.inAppLayout);
-      expect(deserialized.delivered, push.delivered);
+      expect(deserialized.sentCount, push.sentCount);
+      expect(deserialized.failedCount, push.failedCount);
+      expect(deserialized.messageId, push.messageId);
+      expect(deserialized.createdBy, push.createdBy);
+      expect(deserialized.actionLabelEn, push.actionLabelEn);
+      expect(deserialized.status, PushStatus.sent);
     });
 
     test('PromoCode and Transaction round-trip serialization', () {

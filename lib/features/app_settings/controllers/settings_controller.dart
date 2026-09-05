@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:joba_admin/core/repositories/config_repository.dart';
 import 'package:joba_admin/core/utils/app_toast.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
 import 'package:joba_admin/features/admin_management/models/admin_user.dart';
 import 'package:joba_admin/core/services/auth_service.dart';
 
@@ -58,6 +59,7 @@ class SettingsController extends GetxController {
 
   Future<void> _load() async {
     loading.value = true;
+    AppLoggerHelper.info('[SettingsController] ⚙️ Loading app settings and algorithm parameters...');
     try {
       final general = await configRepo.getDoc('general');
       if (general != null) {
@@ -105,8 +107,13 @@ class SettingsController extends GetxController {
         enableMedianFallback.value =
             algo['enableMedianFallback'] as bool? ?? true;
       }
-    } catch (e) {
-      debugPrint('Error loading settings: $e');
+
+      AppLoggerHelper.success(
+        'SettingsController',
+        'Loaded settings: Algo v${algorithmVersion.value}, minApp v${minAppVersion.value}',
+      );
+    } catch (e, st) {
+      AppLoggerHelper.failure('SettingsController', 'Error loading settings: $e', error: e, stackTrace: st);
     } finally {
       loading.value = false;
     }
@@ -158,6 +165,7 @@ class SettingsController extends GetxController {
 
   Future<void> save() async {
     saving.value = true;
+    AppLoggerHelper.info('[SettingsController] 💾 Saving app settings (general + algorithm)...');
     try {
       await configRepo.saveDoc('general', {
         'maintenanceMode': maintenanceMode.value,
@@ -177,11 +185,13 @@ class SettingsController extends GetxController {
         'enableMedianFallback': enableMedianFallback.value,
       });
 
+      AppLoggerHelper.success('SettingsController', 'App settings saved successfully');
       AppToast.success(
         'Settings saved',
         'Mobile app picks these up via app_config documents.',
       );
-    } catch (e) {
+    } catch (e, st) {
+      AppLoggerHelper.failure('SettingsController', 'Could not save app settings: $e', error: e, stackTrace: st);
       AppToast.error('Save failed', 'Could not save app settings: $e');
     } finally {
       saving.value = false;

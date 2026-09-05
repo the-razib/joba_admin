@@ -1,8 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:joba_admin/core/repositories/admin_repository.dart';
 import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/utils/app_toast.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
 import 'package:joba_admin/features/admin_management/models/admin_profile.dart';
 import 'package:joba_admin/features/admin_management/models/admin_user.dart';
 
@@ -29,11 +29,13 @@ class AdminManagementController extends GetxController {
 
   Future<void> loadAdmins() async {
     isLoading.value = true;
+    AppLoggerHelper.info('[AdminManagementController] 👥 Loading admins...');
     try {
       final list = await adminRepo.listAdmins();
       admins.assignAll(list);
-    } catch (e) {
-      debugPrint('Error loading admins: $e');
+      AppLoggerHelper.success('AdminManagementController', 'Loaded ${list.length} admins');
+    } catch (e, st) {
+      AppLoggerHelper.failure('AdminManagementController', 'Error loading admins: $e', error: e, stackTrace: st);
       AppToast.error('Failed to load admins', e.toString());
     } finally {
       isLoading.value = false;
@@ -60,6 +62,7 @@ class AdminManagementController extends GetxController {
     String? tempPassword,
   }) async {
     isSubmitting.value = true;
+    AppLoggerHelper.info('[AdminManagementController] ✉️ Sending admin invite for $email ($name)...');
     try {
       final result = await adminRepo.inviteAdmin(
         name: name,
@@ -68,10 +71,11 @@ class AdminManagementController extends GetxController {
         tempPassword: tempPassword,
       );
 
+      AppLoggerHelper.success('AdminManagementController', 'Admin invited successfully: $email');
       await loadAdmins();
       return result;
-    } catch (e) {
-      debugPrint('Error inviting admin: $e');
+    } catch (e, st) {
+      AppLoggerHelper.failure('AdminManagementController', 'Error inviting admin: $e', error: e, stackTrace: st);
       AppToast.error('Invite Failed', e.toString());
       return null;
     } finally {
@@ -80,16 +84,18 @@ class AdminManagementController extends GetxController {
   }
 
   Future<bool> setRole(String uid, AdminRole newRole) async {
+    AppLoggerHelper.info('[AdminManagementController] 🛡️ Updating admin role for $uid to ${newRole.name}...');
     try {
       await adminRepo.setRole(targetUid: uid, role: newRole);
       final idx = admins.indexWhere((a) => a.uid == uid);
       if (idx != -1) {
         admins[idx] = admins[idx].copyWith(role: newRole);
       }
+      AppLoggerHelper.success('AdminManagementController', 'Admin $uid role changed to ${newRole.name}');
       AppToast.success('Role Updated', 'Admin role updated to ${newRole.label}.');
       return true;
-    } catch (e) {
-      debugPrint('Error updating role: $e');
+    } catch (e, st) {
+      AppLoggerHelper.failure('AdminManagementController', 'Error updating role: $e', error: e, stackTrace: st);
       AppToast.error('Failed to update role', e.toString());
       await loadAdmins();
       return false;
@@ -98,6 +104,7 @@ class AdminManagementController extends GetxController {
 
   Future<bool> toggleActive(String uid) async {
     if (uid == currentUid) {
+      AppLoggerHelper.warning('AdminManagementController', 'Attempted self-deactivation blocked for $uid');
       AppToast.error('Action Blocked', 'You cannot deactivate your own account.');
       return false;
     }
@@ -105,19 +112,21 @@ class AdminManagementController extends GetxController {
     final a = admins.firstWhereOrNull((x) => x.uid == uid);
     if (a == null) return false;
     final next = !a.active;
+    AppLoggerHelper.info('[AdminManagementController] 🔄 Toggling active status for $uid to $next...');
     try {
       await adminRepo.setActive(uid, next);
       final idx = admins.indexWhere((x) => x.uid == uid);
       if (idx != -1) {
         admins[idx] = admins[idx].copyWith(active: next);
       }
+      AppLoggerHelper.success('AdminManagementController', 'Admin $uid active status is now $next');
       AppToast.success(
         next ? 'Account Enabled' : 'Account Disabled',
         'Administrator account has been ${next ? 'enabled' : 'disabled'}.',
       );
       return true;
-    } catch (e) {
-      debugPrint('Error toggling active state: $e');
+    } catch (e, st) {
+      AppLoggerHelper.failure('AdminManagementController', 'Error toggling active state: $e', error: e, stackTrace: st);
       AppToast.error('Failed to change status', e.toString());
       await loadAdmins();
       return false;

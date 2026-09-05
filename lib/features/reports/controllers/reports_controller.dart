@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:joba_admin/core/repositories/report_repository.dart';
 import 'package:joba_admin/core/utils/app_toast.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
+import 'package:joba_admin/features/notifications/controllers/admin_notifications_controller.dart';
 import 'package:joba_admin/features/reports/models/report.dart';
 
 class ReportsController extends GetxController {
@@ -40,9 +42,12 @@ class ReportsController extends GetxController {
   Future<void> loadReports() async {
     try {
       loading.value = true;
+      AppLoggerHelper.info('[ReportsController] 📥 Loading user reports...');
       final reports = await repo.fetchReports();
       all.assignAll(reports);
-    } catch (e) {
+      AppLoggerHelper.success('ReportsController', 'Loaded ${all.length} reports');
+    } catch (e, st) {
+      AppLoggerHelper.failure('ReportsController', 'Could not load reports: $e', error: e, stackTrace: st);
       AppToast.error('Load Failed', 'Could not load reports: $e');
     } finally {
       loading.value = false;
@@ -110,21 +115,45 @@ class ReportsController extends GetxController {
     return list.sublist(start, end);
   }
 
-  void markAsRead(String id) {}
+  Future<void> markAsRead(String id) async {
+    final i = all.indexWhere((r) => r.id == id);
+    if (i >= 0 && !all[i].isRead) {
+      all[i] = all[i].copyWith(isRead: true);
+      all.refresh();
+      AppLoggerHelper.info('[ReportsController] 👁️ Marked report $id as read');
+      try {
+        await repo.markAsRead(id);
+      } catch (e, st) {
+        AppLoggerHelper.failure(
+          'ReportsController',
+          'Could not mark report as read: $e',
+          error: e,
+          stackTrace: st,
+        );
+      }
+    }
+    // Also sync with AdminNotificationsController if registered
+    if (Get.isRegistered<AdminNotificationsController>()) {
+      Get.find<AdminNotificationsController>().markAsRead(id);
+    }
+  }
 
   Future<void> updateStatus(String id, ReportStatus status) async {
     final i = all.indexWhere((r) => r.id == id);
     if (i >= 0) {
       final old = all[i];
       all[i] = old.copyWith(status: status);
+      AppLoggerHelper.info('[ReportsController] 🔄 Updating report $id status to ${status.displayName}');
       try {
         await repo.updateReportStatus(id, status);
+        AppLoggerHelper.success('ReportsController', 'Report $id marked as ${status.displayName}');
         AppToast.success(
           'Status Updated',
           'Report marked as ${status.displayName}.',
         );
-      } catch (e) {
+      } catch (e, st) {
         all[i] = old;
+        AppLoggerHelper.failure('ReportsController', 'Could not update report: $e', error: e, stackTrace: st);
         AppToast.error('Update Failed', 'Could not update report: $e');
       }
     }
@@ -135,14 +164,17 @@ class ReportsController extends GetxController {
     if (i >= 0) {
       final old = all[i];
       all[i] = old.copyWith(priority: priority);
+      AppLoggerHelper.info('[ReportsController] ⚡ Updating report $id priority to ${priority.displayName}');
       try {
         await repo.updateReportPriority(id, priority);
+        AppLoggerHelper.success('ReportsController', 'Report $id priority set to ${priority.displayName}');
         AppToast.success(
           'Priority Updated',
           'Priority changed to ${priority.displayName}.',
         );
-      } catch (e) {
+      } catch (e, st) {
         all[i] = old;
+        AppLoggerHelper.failure('ReportsController', 'Could not update priority: $e', error: e, stackTrace: st);
         AppToast.error('Update Failed', 'Could not update priority: $e');
       }
     }
@@ -153,11 +185,14 @@ class ReportsController extends GetxController {
     if (i >= 0) {
       final old = all[i];
       all.removeAt(i);
+      AppLoggerHelper.info('[ReportsController] 🗑️ Deleting report $id...');
       try {
         await repo.deleteReport(id);
+        AppLoggerHelper.success('ReportsController', 'Report $id deleted');
         AppToast.success('Report Deleted', 'The report has been removed.');
-      } catch (e) {
+      } catch (e, st) {
         all.insert(i, old);
+        AppLoggerHelper.failure('ReportsController', 'Could not delete report: $e', error: e, stackTrace: st);
         AppToast.error('Delete Failed', 'Could not delete report: $e');
       }
     }

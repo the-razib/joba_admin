@@ -21,56 +21,80 @@ class DashboardRecentUsersCard extends GetView<DashboardController> {
       title: 'Recent Users',
       action: 'View All',
       onAction: () => shell.select(NavId.users),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Column(
-        children: [
-          for (final u in controller.recentUsers)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: Row(
-                children: [
-                  AvatarCircle(name: u.name, size: 40),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          u.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: context.palette.textPrimary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          u.email,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: context.palette.textSecondary,
-                            fontSize: 11.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    timeAgo(u.lastActive),
-                    style: TextStyle(
-                      color: context.palette.textSecondary,
-                      fontSize: 11,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  userPlanBadge(u.plan),
-                ],
+      padding: const EdgeInsets.all(16),
+      child: Obx(() {
+        final users = controller.recentUsers;
+        if (users.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40),
+              child: Text(
+                'No users registered yet',
+                style: TextStyle(
+                  color: context.palette.textSecondary,
+                  fontSize: 13,
+                ),
               ),
             ),
-        ],
-      ),
+          );
+        }
+
+        return Column(
+          children: [
+            for (final u in users)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: SizedBox(
+                  height: 44,
+                  child: Row(
+                    children: [
+                      AvatarCircle(name: u.name, size: 40),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              u.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: context.palette.textPrimary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              u.email,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: context.palette.textSecondary,
+                                fontSize: 11.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        timeAgo(u.lastActive),
+                        style: TextStyle(
+                          color: context.palette.textSecondary,
+                          fontSize: 11,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      userPlanBadge(u.plan),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        );
+      }),
     );
   }
 }

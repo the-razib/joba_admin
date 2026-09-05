@@ -68,15 +68,27 @@ class ReportsTableCard extends GetView<ReportsController> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              r.subject,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: context.palette.textPrimary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            Row(
+                              children: [
+                                if (!r.isRead) ...[
+                                  reportNewBadge(),
+                                  const SizedBox(width: 6),
+                                ],
+                                Expanded(
+                                  child: Text(
+                                    r.subject,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: context.palette.textPrimary,
+                                      fontSize: 13,
+                                      fontWeight: r.isRead
+                                          ? FontWeight.w500
+                                          : FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 2),
                             Text(

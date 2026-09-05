@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:joba_admin/core/utils/app_toast.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
 import 'package:joba_admin/features/users/models/app_user.dart';
 import 'package:joba_admin/core/repositories/user_repository.dart';
 
@@ -31,10 +32,13 @@ class UsersController extends GetxController {
 
   Future<void> loadUsers() async {
     loading.value = true;
+    AppLoggerHelper.info('[UsersController] 👥 Fetching registered users...');
     try {
       final list = await repo.fetchUsers();
       all.assignAll(list);
-    } catch (e) {
+      AppLoggerHelper.success('UsersController', 'Loaded ${list.length} users');
+    } catch (e, st) {
+      AppLoggerHelper.failure('UsersController', 'Could not load users: $e', error: e, stackTrace: st);
       AppToast.error('Load Failed', 'Could not load users: $e');
     } finally {
       loading.value = false;
@@ -117,11 +121,14 @@ class UsersController extends GetxController {
     if (i >= 0) {
       final old = all[i];
       all[i] = old.copyWith(status: status);
+      AppLoggerHelper.info('[UsersController] 🔄 Updating user $uid status to ${status.label}');
       try {
         await repo.updateUserStatus(uid, status);
+        AppLoggerHelper.success('UsersController', 'User $uid marked as ${status.label}');
         AppToast.success('Status Updated', 'User marked as ${status.label}.');
-      } catch (e) {
+      } catch (e, st) {
         all[i] = old;
+        AppLoggerHelper.failure('UsersController', 'Could not update status: $e', error: e, stackTrace: st);
         AppToast.error('Update Failed', 'Could not update status: $e');
       }
     }
@@ -132,14 +139,17 @@ class UsersController extends GetxController {
     if (i >= 0) {
       final old = all[i];
       all[i] = old.copyWith(plan: plan);
+      AppLoggerHelper.info('[UsersController] 💳 Updating user $uid plan to ${plan.label}');
       try {
         await repo.updateUserPlan(uid, plan);
+        AppLoggerHelper.success('UsersController', 'User $uid plan updated to ${plan.label}');
         AppToast.success(
           'Plan Updated',
           'User upgraded/downgraded to ${plan.label}.',
         );
-      } catch (e) {
+      } catch (e, st) {
         all[i] = old;
+        AppLoggerHelper.failure('UsersController', 'Could not update plan: $e', error: e, stackTrace: st);
         AppToast.error('Update Failed', 'Could not update plan: $e');
       }
     }
@@ -149,11 +159,14 @@ class UsersController extends GetxController {
     final i = all.indexWhere((u) => u.uid == uid);
     if (i >= 0) {
       final removed = all.removeAt(i);
+      AppLoggerHelper.info('[UsersController] 🗑️ Deleting user $uid...');
       try {
         await repo.deleteUser(uid);
+        AppLoggerHelper.success('UsersController', 'User $uid removed successfully');
         AppToast.success('User Deleted', 'User removed successfully.');
-      } catch (e) {
+      } catch (e, st) {
         all.insert(i, removed);
+        AppLoggerHelper.failure('UsersController', 'Could not delete user: $e', error: e, stackTrace: st);
         AppToast.error('Delete Failed', 'Could not delete user: $e');
       }
     }

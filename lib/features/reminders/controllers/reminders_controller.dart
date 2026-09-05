@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:joba_admin/core/repositories/config_repository.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
 import 'package:joba_admin/features/users/models/app_user.dart';
 import 'package:joba_admin/features/reminders/models/reminder_template.dart';
 import 'package:joba_admin/core/repositories/user_repository.dart';
@@ -41,6 +42,7 @@ class RemindersController extends GetxController {
 
   Future<void> _load() async {
     loading.value = true;
+    AppLoggerHelper.info('[RemindersController] ⏰ Loading reminders config and user adoption stats...');
     try {
       final fetchedUsers = await userRepo.fetchUsers();
       users.assignAll(fetchedUsers);
@@ -83,14 +85,19 @@ class RemindersController extends GetxController {
       kindTrackerCounts[ReminderKind.periodPrep] = prepC;
       kindTrackerCounts[ReminderKind.medicine] = medC;
 
+      AppLoggerHelper.success(
+        'RemindersController',
+        'Loaded order: ${order.map((k) => k.name).toList()} (Pad: $padC, Prep: $prepC, Medicine: $medC, Total tracking: $computedTrackers)',
+      );
+
       unawaited(configRepo.saveDoc('reminder_stats', {
         'totalTrackers': computedTrackers,
         'padCount': padC,
         'periodPrepCount': prepC,
         'medicineCount': medC,
       }));
-    } catch (e) {
-      debugPrint('Error loading reminders config: $e');
+    } catch (e, st) {
+      AppLoggerHelper.failure('RemindersController', 'Error loading reminders config: $e', error: e, stackTrace: st);
     } finally {
       loading.value = false;
     }
@@ -162,16 +169,20 @@ class RemindersController extends GetxController {
 
   Future<void> saveOrder() async {
     saving.value = true;
+    final orderNames = order.map((k) => k.name).toList();
+    AppLoggerHelper.info('[RemindersController] 💾 Saving reminder sequence: $orderNames');
     try {
       await configRepo.saveDoc('reminders', {
-        'order': order.map((k) => k.name).toList(),
+        'order': orderNames,
       });
       _savedOrder.assignAll(order);
+      AppLoggerHelper.success('RemindersController', 'Reminder sequence saved: $orderNames');
       AppToast.success(
         'Reminder order saved',
         'Mobile app home screens will reflect this reminder sequence on next launch.',
       );
-    } catch (e) {
+    } catch (e, st) {
+      AppLoggerHelper.failure('RemindersController', 'Could not save reminder sequence: $e', error: e, stackTrace: st);
       AppToast.error('Save failed', 'Could not save reminder sequence: $e');
     } finally {
       saving.value = false;

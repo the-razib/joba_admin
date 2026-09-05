@@ -28,6 +28,22 @@ class SathiAiScreen extends GetView<SathiAiController> {
                 subtitle: 'Monitor usage, manage access, and protect AI spend',
                 actions: [
                   Obx(
+                    () => IconButton(
+                      onPressed: controller.loadingUsage.value
+                          ? null
+                          : controller.loadUsageData,
+                      icon: controller.loadingUsage.value
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.refresh, size: 18),
+                      tooltip: 'Refresh telemetry',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Obx(
                     () => ElevatedButton.icon(
                       onPressed: controller.saving.value
                           ? null
@@ -88,11 +104,13 @@ class SathiAiScreen extends GetView<SathiAiController> {
               const SizedBox(height: 16),
               const _ActivityCard(),
               const SizedBox(height: 14),
-              Text(
-                'Design preview · Data is currently mock-only. Firebase usage and config wiring comes next.',
-                style: TextStyle(
-                  color: context.palette.textSecondary,
-                  fontSize: 11.5,
+              Obx(
+                () => Text(
+                  'Live Telemetry · Data syncs directly from sathi_ai_usage_daily. ${controller.faqMatchesMonth.value} queries answered free by offline FAQ layer.',
+                  style: TextStyle(
+                    color: context.palette.textSecondary,
+                    fontSize: 11.5,
+                  ),
                 ),
               ),
             ],
@@ -266,39 +284,53 @@ class _TrendCard extends GetView<SathiAiController> {
   const _TrendCard();
   @override
   Widget build(BuildContext context) => Obx(
-    () => SectionCard(
-      title: 'AI calls — last 7 days',
-      action: 'Last 7 days',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 26,
-            children: [
-              _Metric(
-                label: 'Total calls',
-                value: compactNumber(
-                  controller.weeklyCalls.fold<double>(0, (a, b) => a + b) *
-                      1000,
+    () {
+      final totalCalls = controller.weeklyCalls.fold<double>(0, (a, b) => a + b);
+      final avgCalls = controller.weeklyCalls.isEmpty
+          ? 0.0
+          : totalCalls / controller.weeklyCalls.length;
+      final peakCalls = controller.weeklyCalls.fold<double>(
+        0,
+        (a, b) => a > b ? a : b,
+      );
+
+      return SectionCard(
+        title: 'AI calls — last 7 days',
+        action: 'Last 7 days',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 26,
+              children: [
+                _Metric(
+                  label: 'Total calls',
+                  value: compactNumber(totalCalls),
                 ),
-              ),
-              _Metric(label: 'Daily average', value: '6.7K'),
-              _Metric(label: 'Peak day', value: '9.4K'),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ActivityLineChart(
-            values: controller.weeklyCalls,
-            labels: const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-            height: 220,
-            color: AppColors.purple,
-            axisFormatter: compactNumber,
-            tooltipFormatter: (v) => '${compactNumber(v * 1000)} calls',
-            minTop: 10,
-          ),
-        ],
-      ),
-    ),
+                _Metric(
+                  label: 'Daily average',
+                  value: compactNumber(avgCalls),
+                ),
+                _Metric(
+                  label: 'Peak day',
+                  value: compactNumber(peakCalls),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ActivityLineChart(
+              values: controller.weeklyCalls,
+              labels: controller.weeklyLabels,
+              height: 220,
+              color: AppColors.purple,
+              axisFormatter: compactNumber,
+              tooltipFormatter: (v) => '${compactNumber(v)} calls',
+              minTop: 10,
+            ),
+          ],
+        ),
+      );
+    },
   );
 }
 
@@ -326,26 +358,50 @@ class _Metric extends StatelessWidget {
   );
 }
 
-class _ModelCard extends StatelessWidget {
+class _ModelCard extends GetView<SathiAiController> {
   const _ModelCard();
+
+  static String _formatModelTitle(String key) {
+    if (key.contains('flash-lite') || key.contains('flash_lite')) {
+      return 'Gemini 2.5 Flash-Lite';
+    }
+    if (key.contains('flash')) return 'Gemini 2.5 Flash';
+    if (key.contains('pro')) return 'Gemini 2.5 Pro';
+    return key;
+  }
+
+  static Color _colorForModel(String key) {
+    if (key.contains('flash-lite') || key.contains('flash_lite')) {
+      return AppColors.primary;
+    }
+    if (key.contains('flash')) return AppColors.purple;
+    return AppColors.warning;
+  }
+
   @override
   Widget build(BuildContext context) => SectionCard(
     title: 'Model usage mix',
-    child: Column(
-      children: [
-        _Bar('Gemini 2.5 Flash-Lite', '82%', .82, AppColors.primary),
-        _Bar('Gemini 2.5 Flash', '12%', .12, AppColors.purple),
-        _Bar('Safety / fallback', '6%', .06, AppColors.warning),
-        const SizedBox(height: 12),
-        Text(
-          'Balanced routing is active to keep response quality high while controlling cost.',
-          style: TextStyle(
-            color: context.palette.textSecondary,
-            fontSize: 11.5,
-            height: 1.4,
+    child: Obx(
+      () => Column(
+        children: [
+          for (final entry in controller.modelMix.entries)
+            _Bar(
+              _formatModelTitle(entry.key),
+              '${(entry.value * 100).toStringAsFixed(0)}%',
+              entry.value,
+              _colorForModel(entry.key),
+            ),
+          const SizedBox(height: 12),
+          Text(
+            'Zero-cost local FAQ deflects basic queries. Unmatched requests route through ${controller.selectedModel.value}.',
+            style: TextStyle(
+              color: context.palette.textSecondary,
+              fontSize: 11.5,
+              height: 1.4,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     ),
   );
 }
@@ -469,11 +525,15 @@ class _SafetyCard extends GetView<SathiAiController> {
             items: const [
               DropdownMenuItem(
                 value: 'gemini-2.5-flash-lite',
-                child: Text('Gemini 2.5 Flash-Lite · Lowest cost'),
+                child: Text('Gemini 2.5 Flash-Lite · Lowest cost (Recommended)'),
               ),
               DropdownMenuItem(
                 value: 'gemini-2.5-flash',
                 child: Text('Gemini 2.5 Flash · Higher quality'),
+              ),
+              DropdownMenuItem(
+                value: 'gemini-3.1-flash-lite',
+                child: Text('Gemini 3.1 Flash-Lite · Next-Gen'),
               ),
             ],
             onChanged: (v) {

@@ -7,7 +7,6 @@ import 'package:joba_admin/features/avatars/controllers/avatars_controller.dart'
 import 'package:joba_admin/features/avatars/views/widgets/add_category_dialog.dart';
 import 'package:joba_admin/features/avatars/views/widgets/avatar_category_chips.dart';
 import 'package:joba_admin/features/avatars/views/widgets/avatar_grid_view.dart';
-import 'package:joba_admin/features/avatars/views/widgets/avatar_info_banner.dart';
 import 'package:joba_admin/features/avatars/views/widgets/upload_avatars_flow.dart';
 
 /// Avatar Management Screen - Manage and upload preset profile avatars.
@@ -60,8 +59,6 @@ class AvatarsScreen extends GetView<AvatarsController> {
                         ]
                       : const [],
                 ),
-                const SizedBox(height: 14),
-                const AvatarInfoBanner(),
                 const SizedBox(height: 14),
                 const AvatarCategoryChips(),
                 const SizedBox(height: 16),

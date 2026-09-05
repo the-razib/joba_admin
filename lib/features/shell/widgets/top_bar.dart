@@ -5,8 +5,10 @@ import 'package:joba_admin/core/services/theme_service.dart';
 import 'package:joba_admin/core/theme/app_colors.dart';
 import 'package:joba_admin/core/theme/app_theme.dart';
 import 'package:joba_admin/core/theme/responsive.dart';
-import 'package:joba_admin/core/utils/app_toast.dart';
 import 'package:joba_admin/core/widgets/avatar_circle.dart';
+import 'package:joba_admin/features/admin_management/views/widgets/admin_profile_dialog.dart';
+import 'package:joba_admin/features/notifications/controllers/admin_notifications_controller.dart';
+import 'package:joba_admin/features/notifications/views/widgets/admin_notifications_popover.dart';
 import 'package:joba_admin/features/shell/shell_controller.dart';
 import 'package:joba_admin/routes/app_routes.dart';
 
@@ -20,7 +22,6 @@ class TopBar extends GetView<ShellController> implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final palette = context.palette;
     final mobile = Responsive.isMobile(context);
-    final admin = Get.find<AuthService>().user.value;
 
     return Container(
       height: 64,
@@ -71,19 +72,7 @@ class TopBar extends GetView<ShellController> implements PreferredSizeWidget {
             ),
           ),
           const Spacer(),
-          if (Responsive.isDesktop(context))
-            SizedBox(
-              width: 260,
-              height: 40,
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search anything...',
-                  isDense: true,
-                  prefixIcon: const Icon(Icons.search, size: 18),
-                ),
-              ),
-            ),
-          if (Responsive.isDesktop(context)) const SizedBox(width: 8),
+
           Obx(
             () => IconButton(
               tooltip: 'Toggle theme',
@@ -95,73 +84,104 @@ class TopBar extends GetView<ShellController> implements PreferredSizeWidget {
               onPressed: () => Get.find<ThemeService>().toggle(),
             ),
           ),
-          IconButton(
-            tooltip: 'Notifications',
-            icon: Stack(
-              children: [
-                const Icon(Icons.notifications_none, size: 22),
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: AppColors.accent,
-                      shape: BoxShape.circle,
+          Obx(() {
+            final unread = Get.isRegistered<AdminNotificationsController>()
+                ? Get.find<AdminNotificationsController>().unreadCount
+                : 0;
+            return IconButton(
+              tooltip: 'Notifications',
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(Icons.notifications_none, size: 22),
+                  if (unread > 0)
+                    Positioned(
+                      right: -2,
+                      top: -2,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.danger,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Center(
+                          child: Text(
+                            unread > 99 ? '99+' : '$unread',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              height: 1,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                    child: const Text(
-                      '6',
-                      style: TextStyle(color: Colors.white, fontSize: 8.5),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            onPressed: () => AppToast.info(
-              'Notifications',
-              '6 pending items — full inbox ships in Phase 2.',
-            ),
-          ),
+                ],
+              ),
+              onPressed: () => AdminNotificationsPopover.show(context),
+            );
+          }),
           const SizedBox(width: 6),
-          if (admin != null)
-            PopupMenuButton<String>(
+          Obx(() {
+            final admin = Get.find<AuthService>().user.value;
+            if (admin == null) return const SizedBox.shrink();
+
+            return PopupMenuButton<String>(
               offset: const Offset(0, 48),
+              tooltip: 'Admin Profile & Menu',
               onSelected: (v) {
-                if (v == 'logout') {
+                if (v == 'profile') {
+                  AdminProfileDialog.show(context);
+                } else if (v == 'logout') {
                   Get.find<AuthService>().logout();
                   Get.offAllNamed(AppRoutes.login);
                 }
               },
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AvatarCircle(name: admin.name, size: 38),
-                  if (!mobile) ...[
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          admin.name,
-                          style: TextStyle(
-                            color: palette.textPrimary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          admin.role.label,
-                          style: const TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AvatarCircle(
+                      name: admin.name,
+                      url: admin.photoUrl,
+                      size: 38,
                     ),
-                    const Icon(Icons.keyboard_arrow_down, size: 18),
+                    if (!mobile) ...[
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            admin.name,
+                            style: TextStyle(
+                              color: palette.textPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            admin.role.label,
+                            style: const TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Icon(Icons.keyboard_arrow_down, size: 18),
+                    ],
                   ],
-                ],
+                ),
               ),
               itemBuilder: (_) => [
                 PopupMenuItem(
@@ -187,7 +207,9 @@ class TopBar extends GetView<ShellController> implements PreferredSizeWidget {
                   ),
                 ),
               ],
-            ),
+            );
+          }),
+
         ],
       ),
     );

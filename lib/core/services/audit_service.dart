@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:joba_admin/core/repositories/audit_log_repository.dart';
 import 'package:joba_admin/core/services/auth_service.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
 import 'package:joba_admin/features/audit_logs/models/audit_log.dart';
 
 /// Centralized service to log administrative actions and security events across the entire panel.
@@ -37,10 +37,14 @@ class AuditService {
         status: status,
       );
 
+      AppLoggerHelper.info(
+        '[Audit] 🛡️ [$module] [${action.label.toUpperCase()}] $details (Admin: ${logEntry.adminName})',
+      );
+
       final repo = Get.find<AuditLogRepository>();
       await repo.recordLog(logEntry);
     } catch (e) {
-      debugPrint('AuditService failed to record entry: $e');
+      AppLoggerHelper.warning('AuditService failed to record entry: $e');
     }
   }
 }

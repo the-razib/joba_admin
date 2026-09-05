@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:joba_admin/core/repositories/legal_repository.dart';
 import 'package:joba_admin/core/services/auth_service.dart';
 import 'package:joba_admin/core/utils/app_toast.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
 import 'package:joba_admin/features/admin_management/models/admin_user.dart';
 import 'package:joba_admin/features/legal/models/legal_document_admin_model.dart';
 
@@ -67,6 +68,7 @@ class LegalAdminController extends GetxController {
   Future<void> loadDocuments() async {
     try {
       isLoading.value = true;
+      AppLoggerHelper.info('[LegalAdminController] 📜 Loading legal documents (privacy_policy, terms_conditions)...');
 
       // 1. Fetch Privacy Policy
       final privacyDoc = await _repository.getDocument('privacy_policy');
@@ -89,7 +91,10 @@ class LegalAdminController extends GetxController {
         termsVersionCtrl.text = termsDoc.version;
         termsUpdatedAt.value = termsDoc.updatedAt;
       }
-    } catch (e) {
+
+      AppLoggerHelper.success('LegalAdminController', 'Legal documents loaded successfully');
+    } catch (e, st) {
+      AppLoggerHelper.failure('LegalAdminController', 'Failed to load legal documents: $e', error: e, stackTrace: st);
       AppToast.error('Failed to load legal documents: $e');
     } finally {
       isLoading.value = false;
@@ -98,11 +103,14 @@ class LegalAdminController extends GetxController {
 
   Future<void> saveCurrentDocument() async {
     if (!canEdit) {
+      AppLoggerHelper.warning('LegalAdminController', 'User lacks permission to edit legal documents');
       AppToast.error('You do not have permission to edit legal documents');
       return;
     }
 
     final isPrivacy = activeDocTab.value == 0;
+    final docType = isPrivacy ? 'privacy_policy' : 'terms_conditions';
+    AppLoggerHelper.info('[LegalAdminController] 💾 Saving legal document: $docType...');
     try {
       isSaving.value = true;
       final now = DateTime.now();
@@ -120,6 +128,7 @@ class LegalAdminController extends GetxController {
 
         await _repository.saveDocument(updatedDoc);
         privacyUpdatedAt.value = now;
+        AppLoggerHelper.success('LegalAdminController', 'Privacy Policy updated to v${updatedDoc.version}');
         AppToast.success('Privacy Policy updated and synced live!');
       } else {
         final updatedDoc = LegalDocumentAdminModel(
@@ -134,9 +143,11 @@ class LegalAdminController extends GetxController {
 
         await _repository.saveDocument(updatedDoc);
         termsUpdatedAt.value = now;
+        AppLoggerHelper.success('LegalAdminController', 'Terms & Conditions updated to v${updatedDoc.version}');
         AppToast.success('Terms & Conditions updated and synced live!');
       }
-    } catch (e) {
+    } catch (e, st) {
+      AppLoggerHelper.failure('LegalAdminController', 'Failed to save document $docType: $e', error: e, stackTrace: st);
       AppToast.error('Failed to save document: $e');
     } finally {
       isSaving.value = false;

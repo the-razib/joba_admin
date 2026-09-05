@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:joba_admin/core/repositories/premium_repository.dart';
 import 'package:joba_admin/core/utils/app_toast.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
 import 'package:joba_admin/features/premium/models/premium.dart';
 import 'package:joba_admin/features/users/models/app_user.dart';
 
@@ -41,6 +42,7 @@ class PremiumController extends GetxController {
 
   Future<void> loadData() async {
     loading.value = true;
+    AppLoggerHelper.info('[PremiumController] 💎 Loading premium dashboard data (users, promos, transactions)...');
     try {
       final results = await Future.wait([
         repo.fetchPremiumUsers(),
@@ -50,8 +52,12 @@ class PremiumController extends GetxController {
       users.assignAll(results[0] as List<AppUser>);
       promos.assignAll(results[1] as List<PromoCode>);
       transactions.assignAll(results[2] as List<Transaction>);
-    } catch (e) {
-      debugPrint('Error loading premium data: $e');
+      AppLoggerHelper.success(
+        'PremiumController',
+        'Loaded premium data: ${users.length} users, ${promos.length} promos, ${transactions.length} transactions',
+      );
+    } catch (e, st) {
+      AppLoggerHelper.failure('PremiumController', 'Error loading premium data: $e', error: e, stackTrace: st);
     } finally {
       loading.value = false;
     }

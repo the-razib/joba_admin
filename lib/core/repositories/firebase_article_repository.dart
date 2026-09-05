@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import 'package:joba_admin/core/repositories/article_repository.dart';
 import 'package:joba_admin/core/services/audit_service.dart';
 import 'package:joba_admin/core/services/storage_service.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
 import 'package:joba_admin/features/articles/models/article.dart';
 import 'package:joba_admin/features/articles/models/article_category.dart';
 import 'package:joba_admin/features/audit_logs/models/audit_log.dart';
@@ -31,17 +31,22 @@ class FirebaseArticleRepository implements ArticleRepository {
           .orderBy('order')
           .get();
 
-      return snap.docs
+      final list = snap.docs
           .map((doc) => ArticleCategory.fromMap(doc.data(), docId: doc.id))
           .toList();
-    } catch (e) {
-      debugPrint('Error fetching article categories: $e');
+      AppLoggerHelper.info('[FirebaseArticleRepository] 📂 Fetched ${list.length} categories');
+      return list;
+    } catch (e, st) {
+      AppLoggerHelper.warning('[FirebaseArticleRepository] Ordered fetch failed, trying unordered fallback: $e');
       try {
         final fallback = await _firestore.collection(_categoriesCol).get();
-        return fallback.docs
+        final list = fallback.docs
             .map((doc) => ArticleCategory.fromMap(doc.data(), docId: doc.id))
             .toList();
-      } catch (_) {
+        AppLoggerHelper.info('[FirebaseArticleRepository] 📂 Fallback fetched ${list.length} categories');
+        return list;
+      } catch (err) {
+        AppLoggerHelper.failure('FirebaseArticleRepository', 'Failed to fetch categories: $err', error: err, stackTrace: st);
         return [];
       }
     }
@@ -55,17 +60,22 @@ class FirebaseArticleRepository implements ArticleRepository {
           .orderBy('displayOrder')
           .get();
 
-      return snap.docs
+      final list = snap.docs
           .map((doc) => Article.fromMap(doc.data(), docId: doc.id))
           .toList();
-    } catch (e) {
-      debugPrint('Error fetching articles: $e');
+      AppLoggerHelper.info('[FirebaseArticleRepository] 📄 Fetched ${list.length} articles');
+      return list;
+    } catch (e, st) {
+      AppLoggerHelper.warning('[FirebaseArticleRepository] Ordered article fetch failed, trying fallback: $e');
       try {
         final fallback = await _firestore.collection(_articlesCol).get();
-        return fallback.docs
+        final list = fallback.docs
             .map((doc) => Article.fromMap(doc.data(), docId: doc.id))
             .toList();
-      } catch (_) {
+        AppLoggerHelper.info('[FirebaseArticleRepository] 📄 Fallback fetched ${list.length} articles');
+        return list;
+      } catch (err) {
+        AppLoggerHelper.failure('FirebaseArticleRepository', 'Failed to fetch articles: $err', error: err, stackTrace: st);
         return [];
       }
     }
@@ -75,9 +85,11 @@ class FirebaseArticleRepository implements ArticleRepository {
   Future<List<String>> fetchTags() async {
     try {
       final snap = await _firestore.collection(_tagsCol).get();
-      return snap.docs.map((d) => d.id).toList();
-    } catch (e) {
-      debugPrint('Error fetching article tags: $e');
+      final tags = snap.docs.map((d) => d.id).toList();
+      AppLoggerHelper.info('[FirebaseArticleRepository] 🏷️ Fetched ${tags.length} tags');
+      return tags;
+    } catch (e, st) {
+      AppLoggerHelper.failure('FirebaseArticleRepository', 'Error fetching article tags: $e', error: e, stackTrace: st);
       return [];
     }
   }
@@ -88,8 +100,8 @@ class FirebaseArticleRepository implements ArticleRepository {
       final doc = await _firestore.collection(_articlesCol).doc(id).get();
       if (!doc.exists || doc.data() == null) return null;
       return Article.fromMap(doc.data()!, docId: doc.id);
-    } catch (e) {
-      debugPrint('Error fetching article $id: $e');
+    } catch (e, st) {
+      AppLoggerHelper.failure('FirebaseArticleRepository', 'Error fetching article $id: $e', error: e, stackTrace: st);
       return null;
     }
   }
@@ -114,6 +126,10 @@ class FirebaseArticleRepository implements ArticleRepository {
     }
 
     await docRef.set(data, SetOptions(merge: true));
+    AppLoggerHelper.success(
+      'FirebaseArticleRepository',
+      '${isNew ? 'Created' : 'Updated'} article "${article.titleEn}" (${article.id})',
+    );
 
     await AuditService.log(
       module: 'Articles CMS',
@@ -149,6 +165,7 @@ class FirebaseArticleRepository implements ArticleRepository {
       await _storageService.deleteFile(audioEn.toString());
     }
 
+    AppLoggerHelper.success('FirebaseArticleRepository', 'Deleted article "$title" ($id) from Firestore & Storage');
     await AuditService.log(
       module: 'Articles CMS',
       action: AuditAction.deleted,
@@ -169,6 +186,10 @@ class FirebaseArticleRepository implements ArticleRepository {
     }
 
     await docRef.set(data, SetOptions(merge: true));
+    AppLoggerHelper.success(
+      'FirebaseArticleRepository',
+      '${isNew ? 'Created' : 'Updated'} category "${category.nameEn}" (${category.id})',
+    );
 
     await AuditService.log(
       module: 'Articles CMS',
@@ -184,15 +205,26 @@ class FirebaseArticleRepository implements ArticleRepository {
     final data = doc.data();
     final imgUrl = data?['imagePath'] ?? data?['imageUrl'];
     if (imgUrl != null && imgUrl.toString().startsWith('http')) {
-      _storageService.deleteFile(imgUrl.toString());
+      try {
+        await _storageService.deleteFile(imgUrl.toString());
+      } catch (e) {
+        AppLoggerHelper.warning('Category image delete warning: $e');
+      }
+    }
+
+    try {
+      await _storageService.deleteFolder('article_categories/$id');
+    } catch (e) {
+      AppLoggerHelper.warning('Category folder delete warning: $e');
     }
 
     await docRef.delete();
+    AppLoggerHelper.success('FirebaseArticleRepository', 'Deleted category document and storage assets: $id');
 
     await AuditService.log(
       module: 'Articles CMS',
       action: AuditAction.deleted,
-      details: 'Deleted category $id',
+      details: 'Deleted category $id and purged media assets',
     );
   }
 
@@ -203,6 +235,7 @@ class FirebaseArticleRepository implements ArticleRepository {
       'isActive': active,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    AppLoggerHelper.info('[FirebaseArticleRepository] 🔄 Toggled category $id to active: $active');
 
     await AuditService.log(
       module: 'Articles CMS',
@@ -223,6 +256,7 @@ class FirebaseArticleRepository implements ArticleRepository {
       });
     }
     await batch.commit();
+    AppLoggerHelper.success('FirebaseArticleRepository', 'Persisted reorder for ${orderedIds.length} articles to Firestore');
 
     await AuditService.log(
       module: 'Articles CMS',

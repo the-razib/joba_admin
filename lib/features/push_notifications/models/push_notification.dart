@@ -9,7 +9,7 @@
 /// `message.notification.image`.
 ///
 /// **In-app dialog does NOT map onto Firebase In-App Messaging.** FIAM
-/// campaigns can only be authored in the Firebase console â€” Google ships no
+/// campaigns can only be authored in the Firebase console — Google ships no
 /// Admin SDK or REST API for creating them, so an admin panel physically
 /// cannot drive FIAM. In-app dialogs are therefore stored as documents the
 /// app reads and renders itself. [InAppLayout] deliberately mirrors FIAM's
@@ -22,7 +22,25 @@ import 'package:joba_admin/core/theme/app_colors.dart';
 
 enum PushAudience { all, free, premium, bangladesh }
 
-enum PushStatus { draft, sent }
+enum PushStatus { draft, sending, sent, failed }
+
+extension PushStatusX on PushStatus {
+  String get label => switch (this) {
+    PushStatus.draft => 'Draft',
+    PushStatus.sending => 'Sending',
+    PushStatus.sent => 'Sent',
+    PushStatus.failed => 'Failed',
+  };
+
+  /// Whether a dispatch may be started from this state.
+  bool get isDispatchable =>
+      this == PushStatus.draft || this == PushStatus.failed;
+
+  /// Whether the campaign has already reached devices at least once.
+  bool get isDelivered => this == PushStatus.sent;
+
+  bool get isInFlight => this == PushStatus.sending;
+}
 
 /// Push and in-app are separate delivery systems, not two skins of one thing:
 /// push is delivered by the OS while the app is closed, in-app is rendered by
@@ -69,11 +87,14 @@ extension NotificationChannelX on NotificationChannel {
 
 extension InAppLayoutX on InAppLayout {
   String get label => switch (this) {
-    InAppLayout.modal => 'Modal',
+    InAppLayout.modal => 'Dialog',
     InAppLayout.card => 'Card',
     InAppLayout.banner => 'Banner',
     InAppLayout.imageOnly => 'Image only',
   };
+
+  /// Only Dialog (modal) is active; all other layouts are currently locked.
+  bool get isLocked => this != InAppLayout.modal;
 
   /// Banners are a thin strip, so long bodies are dropped by the client.
   bool get showsBody => this != InAppLayout.imageOnly;
@@ -88,7 +109,7 @@ const kPushTitleSoftLimit = 65;
 const kPushBodySoftLimit = 240;
 
 /// FCM rejects images above 1 MB on Android; 2:1 renders without cropping.
-const kRecommendedImageNote = '1024Ã—512 (2:1), HTTPS, under 1 MB';
+const kRecommendedImageNote = '1024×512 (2:1), HTTPS, under 1 MB';
 
 class PushNotification {
   const PushNotification({
@@ -106,8 +127,12 @@ class PushNotification {
     this.actionUrl,
     this.status = PushStatus.draft,
     this.sentAt,
-    this.delivered = 0,
-    this.opened = 0,
+    this.createdAt,
+    this.createdBy,
+    this.sentCount = 0,
+    this.failedCount = 0,
+    this.messageId,
+    this.errorMessage,
   });
 
   final String id;
@@ -121,9 +146,8 @@ class PushNotification {
   /// Only meaningful when [channel] includes in-app.
   final InAppLayout inAppLayout;
 
-  /// Public HTTPS URL. Phase 3 uploads to Cloud Storage and stores the
-  /// download URL here â€” `gs://` paths are not fetchable by FCM or by the
-  /// client's image loader.
+  /// Public HTTPS URL, uploaded to Cloud Storage by the composer — `gs://`
+  /// paths are not fetchable by FCM or by the client's image loader.
   final String? imageUrl;
 
   final String? actionLabelBn;
@@ -132,8 +156,22 @@ class PushNotification {
 
   final PushStatus status;
   final DateTime? sentAt;
-  final int delivered;
-  final int opened;
+  final DateTime? createdAt;
+
+  /// UID of the admin who created the campaign.
+  final String? createdBy;
+
+  /// Devices FCM accepted the message for. Written by the Cloud Function.
+  final int sentCount;
+
+  /// Devices FCM rejected, mostly stale tokens from uninstalled apps.
+  final int failedCount;
+
+  /// Message id of the first accepted send, for cross-referencing in logs.
+  final String? messageId;
+
+  /// Why the dispatch failed, when [status] is [PushStatus.failed].
+  final String? errorMessage;
 
   bool get hasImage => (imageUrl ?? '').trim().isNotEmpty;
 
@@ -142,20 +180,25 @@ class PushNotification {
       (actionLabelBn ?? '').trim().isNotEmpty ||
       (actionUrl ?? '').trim().isNotEmpty;
 
-  double get openRate => delivered == 0 ? 0 : opened / delivered * 100;
+  /// Devices targeted in the last dispatch.
+  int get totalAttempted => sentCount + failedCount;
+
+  /// Share of attempted devices FCM accepted.
+  double get acceptanceRate =>
+      totalAttempted == 0 ? 0 : sentCount / totalAttempted * 100;
 
   /// Blocking problems. A campaign with any of these must not be sent.
   List<String> get issues {
     final out = <String>[];
     if (titleEn.trim().isEmpty || titleBn.trim().isEmpty) {
-      out.add('Both à¦¬à¦¾à¦‚à¦²à¦¾ and English titles are required.');
+      out.add('Both বাংলা and English titles are required.');
     }
     final needsBody = channel.hasPush || inAppLayout.showsBody;
     if (needsBody && (bodyEn.trim().isEmpty || bodyBn.trim().isEmpty)) {
-      out.add('Both à¦¬à¦¾à¦‚à¦²à¦¾ and English bodies are required.');
+      out.add('Both বাংলা and English bodies are required.');
     }
     if (channel.hasInApp && inAppLayout.requiresImage && !hasImage) {
-      out.add('The â€œImage onlyâ€ layout needs an image.');
+      out.add('The “Image only” layout needs an image.');
     }
     if (hasImage && !imageUrl!.trim().startsWith('https://')) {
       // FCM silently drops non-HTTPS images rather than erroring.
@@ -173,7 +216,7 @@ class PushNotification {
 
   bool get canSend => issues.isEmpty;
 
-  /// Non-blocking advice â€” things that still send but render badly.
+  /// Non-blocking advice — things that still send but render badly.
   List<String> get warnings {
     final out = <String>[];
     if (channel.hasPush && titleEn.trim().length > kPushTitleSoftLimit) {
@@ -199,6 +242,7 @@ class PushNotification {
   }
 
   PushNotification copyWith({
+    String? id,
     String? titleBn,
     String? titleEn,
     String? bodyBn,
@@ -213,10 +257,15 @@ class PushNotification {
     String? actionUrl,
     PushStatus? status,
     DateTime? sentAt,
-    int? delivered,
-    int? opened,
+    DateTime? createdAt,
+    String? createdBy,
+    int? sentCount,
+    int? failedCount,
+    String? messageId,
+    String? errorMessage,
+    bool clearError = false,
   }) => PushNotification(
-    id: id,
+    id: id ?? this.id,
     titleBn: titleBn ?? this.titleBn,
     titleEn: titleEn ?? this.titleEn,
     bodyBn: bodyBn ?? this.bodyBn,
@@ -226,16 +275,24 @@ class PushNotification {
     inAppLayout: inAppLayout ?? this.inAppLayout,
     imageUrl: clearImage ? null : (imageUrl ?? this.imageUrl),
     actionLabelBn: actionLabelBn ?? this.actionLabelBn,
+    actionLabelEn: actionLabelEn ?? this.actionLabelEn,
     actionUrl: actionUrl ?? this.actionUrl,
     status: status ?? this.status,
     sentAt: sentAt ?? this.sentAt,
-    delivered: delivered ?? this.delivered,
-    opened: opened ?? this.opened,
+    createdAt: createdAt ?? this.createdAt,
+    createdBy: createdBy ?? this.createdBy,
+    sentCount: sentCount ?? this.sentCount,
+    failedCount: failedCount ?? this.failedCount,
+    messageId: messageId ?? this.messageId,
+    errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
   );
 
-  Map<String, dynamic> toMap() {
+  /// Fields the PANEL owns. Deliberately excludes `status`, `sentAt`,
+  /// `sentCount`, `failedCount`, `messageId` and `errorMessage`: those belong to
+  /// the Cloud Function, and writing them from the client would let a stale
+  /// draft save overwrite a real dispatch result.
+  Map<String, dynamic> toDraftMap() {
     return {
-      'id': id,
       'title': {'bn': titleBn, 'en': titleEn},
       'titleBn': titleBn,
       'titleEn': titleEn,
@@ -245,16 +302,27 @@ class PushNotification {
       'audience': audience.name,
       'channel': channel.name,
       'inAppLayout': inAppLayout.name,
-      if (imageUrl != null) 'imageUrl': imageUrl,
+      'imageUrl': imageUrl,
       'actionLabel': {'bn': actionLabelBn, 'en': actionLabelEn},
       'actionLabelBn': actionLabelBn,
       'actionLabelEn': actionLabelEn,
-      if (actionUrl != null) 'actionUrl': actionUrl,
+      'actionUrl': actionUrl,
+      'actionType': (actionUrl ?? '').trim().isEmpty ? 'none' : 'screen',
+    };
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      ...toDraftMap(),
       'status': status.name,
       if (sentAt != null) 'sentAt': Timestamp.fromDate(sentAt!),
-      if (sentAt != null) 'createdAt': Timestamp.fromDate(sentAt!),
-      'delivered': delivered,
-      'opened': opened,
+      if (createdAt != null) 'createdAt': Timestamp.fromDate(createdAt!),
+      if (createdBy != null) 'createdBy': createdBy,
+      'sentCount': sentCount,
+      'failedCount': failedCount,
+      if (messageId != null) 'messageId': messageId,
+      if (errorMessage != null) 'errorMessage': errorMessage,
     };
   }
 
@@ -309,9 +377,13 @@ class PushNotification {
       actionLabelEn: actionLabelMap?['en']?.toString() ?? map['actionLabelEn']?.toString() ?? '',
       actionUrl: map['actionUrl']?.toString(),
       status: pushStatus,
-      sentAt: parseDate(map['sentAt'] ?? map['createdAt']),
-      delivered: (map['delivered'] as num?)?.toInt() ?? 0,
-      opened: (map['opened'] as num?)?.toInt() ?? 0,
+      sentAt: parseDate(map['sentAt']),
+      createdAt: parseDate(map['createdAt']),
+      createdBy: map['createdBy']?.toString(),
+      sentCount: (map['sentCount'] as num?)?.toInt() ?? 0,
+      failedCount: (map['failedCount'] as num?)?.toInt() ?? 0,
+      messageId: map['messageId']?.toString(),
+      errorMessage: map['errorMessage']?.toString(),
     );
   }
 }

@@ -58,13 +58,23 @@ class ReportDetailBody extends GetView<ReportsController> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        r.subject,
-                        style: TextStyle(
-                          color: palette.textPrimary,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      Row(
+                        children: [
+                          if (!r.isRead) ...[
+                            reportNewBadge(),
+                            const SizedBox(width: 6),
+                          ],
+                          Expanded(
+                            child: Text(
+                              r.subject,
+                              style: TextStyle(
+                                color: palette.textPrimary,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       Text(
                         '#${r.id} • ${formatDateTime(r.date)}',

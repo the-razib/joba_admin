@@ -80,4 +80,24 @@ class AdminUser {
       role == AdminRole.superAdmin || role == AdminRole.editor;
 
   bool get canManageAdmins => role == AdminRole.superAdmin;
+
+  AdminUser copyWith({
+    String? uid,
+    String? name,
+    String? email,
+    AdminRole? role,
+    String? photoUrl,
+    bool? active,
+    bool clearPhoto = false,
+  }) {
+    return AdminUser(
+      uid: uid ?? this.uid,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      role: role ?? this.role,
+      photoUrl: clearPhoto ? null : (photoUrl ?? this.photoUrl),
+      active: active ?? this.active,
+    );
+  }
 }
+

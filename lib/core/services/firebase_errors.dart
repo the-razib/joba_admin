@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 /// Centralized human-readable error mapper for Firebase operations across all modules.
@@ -6,6 +7,17 @@ class FirebaseErrors {
 
   /// Maps any exception/error into a clean user-facing error message.
   static String messageOf(dynamic error) {
+    // A Cloud Function's own message is written for this exact situation and is
+    // far more useful than a generic code translation. Checked FIRST because
+    // FirebaseFunctionsException extends FirebaseException, so the switch below
+    // would otherwise swallow it — e.g. a callable rejecting a request with
+    // 'failed-precondition' and a clear explanation was being reported to the
+    // admin as "Operation rejected by database constraints or missing index."
+    if (error is FirebaseFunctionsException) {
+      final message = error.message?.trim();
+      if (message != null && message.isNotEmpty) return message;
+    }
+
     if (error is FirebaseException) {
       return switch (error.code) {
         'permission-denied' =>

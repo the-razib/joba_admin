@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:joba_admin/core/repositories/audit_log_repository.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
 import 'package:joba_admin/features/audit_logs/models/audit_log.dart';
 
 class AuditLogsController extends GetxController {
@@ -29,10 +30,13 @@ class AuditLogsController extends GetxController {
 
   Future<void> loadLogs() async {
     loading.value = true;
+    AppLoggerHelper.info('[AuditLogsController] 📋 Fetching administrative audit logs (limit: 200)...');
     try {
       final logs = await repo.fetchLogs(limit: 200);
       all.assignAll(logs);
-    } catch (_) {
+      AppLoggerHelper.success('AuditLogsController', 'Loaded ${logs.length} audit log entries');
+    } catch (e, st) {
+      AppLoggerHelper.failure('AuditLogsController', 'Failed to fetch audit logs: $e', error: e, stackTrace: st);
       all.clear();
     } finally {
       loading.value = false;

@@ -10,6 +10,7 @@ import 'package:joba_admin/core/repositories/firebase_audit_log_repository.dart'
 import 'package:joba_admin/core/repositories/firebase_avatar_repository.dart';
 import 'package:joba_admin/core/repositories/firebase_legal_repository.dart';
 import 'package:joba_admin/core/repositories/firebase_premium_repository.dart';
+import 'package:joba_admin/core/repositories/firebase_push_repository.dart';
 import 'package:joba_admin/core/repositories/firebase_report_repository.dart';
 import 'package:joba_admin/core/repositories/firebase_screener_repository.dart';
 import 'package:joba_admin/core/repositories/firebase_usage_repository.dart';
@@ -33,6 +34,7 @@ import 'package:joba_admin/features/avatars/controllers/avatars_controller.dart'
 import 'package:joba_admin/features/cycle_data/controllers/cycle_data_controller.dart';
 import 'package:joba_admin/features/dashboard/controllers/dashboard_controller.dart';
 import 'package:joba_admin/features/disease_checkup/controllers/admin_screener_controller.dart';
+import 'package:joba_admin/features/notifications/controllers/admin_notifications_controller.dart';
 import 'package:joba_admin/features/premium/controllers/premium_controller.dart';
 import 'package:joba_admin/features/push_notifications/controllers/push_controller.dart';
 import 'package:joba_admin/features/reminders/controllers/reminders_controller.dart';
@@ -50,8 +52,11 @@ import 'package:joba_admin/firebase_options.dart';
 import 'package:joba_admin/routes/app_pages.dart';
 import 'package:joba_admin/routes/app_routes.dart';
 
+import 'package:joba_admin/core/utils/logging/logger.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  AppLoggerHelper.info('🚀 Joba Admin Panel starting up...');
 
   bool firebaseInitialized = false;
   String? initError;
@@ -62,9 +67,10 @@ Future<void> main() async {
     );
     FirestoreService.configure();
     firebaseInitialized = true;
-  } catch (e) {
+    AppLoggerHelper.success('Bootstrap', 'Firebase initialized successfully');
+  } catch (e, st) {
     initError = e.toString();
-    debugPrint('⚠️ [Firebase Bootstrap] Initialization failed: $e');
+    AppLoggerHelper.failure('Firebase Bootstrap', 'Initialization failed: $e', error: e, stackTrace: st);
   }
 
   if (!firebaseInitialized) {
@@ -140,7 +146,7 @@ class _AppBindings extends Bindings {
       fenix: true,
     );
     Get.lazyPut<PushRepository>(
-      () => enableMocks ? MockPushRepository() : MockPushRepository(),
+      () => enableMocks ? MockPushRepository() : FirebasePushRepository(),
       fenix: true,
     );
     Get.lazyPut<ScreenerRepository>(
@@ -182,5 +188,7 @@ class _AppBindings extends Bindings {
     Get.lazyPut(() => AdminManagementController(), fenix: true);
     Get.lazyPut(() => UsageController(), fenix: true);
     Get.lazyPut(() => SathiAiController(), fenix: true);
+    Get.lazyPut(() => AdminNotificationsController(), fenix: true);
   }
+
 }

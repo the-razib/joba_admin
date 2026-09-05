@@ -10,3 +10,5 @@ export { adminSetRole } from './handlers/adminSetRole';
 export { adminGetProjectUsage } from './handlers/adminGetProjectUsage';
 export { collectUsageDaily } from './handlers/collectUsageDaily';
 export { adminSetStorageCors } from './handlers/adminSetStorageCors';
+export { sathiChat } from './handlers/sathiChat';
+export { sathiRecordFaqMatch } from './handlers/sathiRecordFaqMatch';

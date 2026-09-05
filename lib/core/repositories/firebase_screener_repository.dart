@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:joba_admin/core/repositories/screener_repository.dart';
 import 'package:joba_admin/core/services/audit_service.dart';
 import 'package:joba_admin/core/services/storage_service.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
 import 'package:joba_admin/features/audit_logs/models/audit_log.dart';
 import 'package:joba_admin/features/disease_checkup/models/screener_admin_model.dart';
 
@@ -139,6 +140,7 @@ class FirebaseScreenerRepository implements ScreenerRepository {
 
     // Upload new image if provided
     if (imageBytes != null && imageBytes.isNotEmpty) {
+      final oldImagePath = screener.imagePath;
       final ext = imageName?.split('.').last ?? 'jpg';
       final downloadUrl = await _storageService.uploadBytes(
         folder: 'screeners/${screener.id}',
@@ -147,6 +149,19 @@ class FirebaseScreenerRepository implements ScreenerRepository {
         contentType: 'image/$ext',
       );
       finalScreener = finalScreener.copyWith(imagePath: downloadUrl);
+
+      // Best-effort cleanup of previous image from Storage
+      if (oldImagePath.isNotEmpty &&
+          oldImagePath.startsWith('http') &&
+          oldImagePath != downloadUrl) {
+        try {
+          AppLoggerHelper.info(
+              '[FirebaseScreenerRepository] 🗑️ Cleaning up replaced screener image: $oldImagePath');
+          await _storageService.deleteFile(oldImagePath);
+        } catch (e) {
+          AppLoggerHelper.warning('Cleanup of old screener image warning: $e');
+        }
+      }
     }
 
     final data = finalScreener.toMap();
@@ -170,24 +185,49 @@ class FirebaseScreenerRepository implements ScreenerRepository {
   @override
   Future<bool> deleteScreener(String id) async {
     try {
-      await _firestore.collection(_collection).doc(id).delete();
+      AppLoggerHelper.info('[FirebaseScreenerRepository] 🗑️ Deleting screener: $id...');
 
-      // Clean up storage assets under screeners/$id
+      // 1. Inspect screener document BEFORE deleting to extract imagePath
+      String? imagePath;
+      try {
+        final docSnap = await _firestore.collection(_collection).doc(id).get();
+        if (docSnap.exists) {
+          imagePath = docSnap.data()?['imagePath']?.toString();
+        }
+      } catch (e) {
+        AppLoggerHelper.warning('Could not read screener $id before deletion: $e');
+      }
+
+      // 2. Delete the individual image file if it exists
+      if (imagePath != null && imagePath.isNotEmpty && imagePath.startsWith('http')) {
+        try {
+          AppLoggerHelper.info('[FirebaseScreenerRepository] 🗑️ Deleting screener cover image: $imagePath');
+          await _storageService.deleteFile(imagePath);
+        } catch (e) {
+          AppLoggerHelper.warning('Screener image delete warning: $e');
+        }
+      }
+
+      // 3. Clean up all storage assets under screeners/$id
       try {
         await _storageService.deleteFolder('screeners/$id');
       } catch (e) {
-        debugPrint('Storage cleanup for screener $id non-fatal: $e');
+        AppLoggerHelper.warning('Storage cleanup for screener $id warning: $e');
       }
 
+      // 4. Delete the Firestore document
+      await _firestore.collection(_collection).doc(id).delete();
+
+      AppLoggerHelper.success('FirebaseScreenerRepository', 'Deleted screener $id from Firestore and Storage');
       await AuditService.log(
         module: 'Disease Checkup',
         action: AuditAction.deleted,
-        details: 'Deleted screener ID: $id',
+        details: 'Deleted screener ID: $id and its storage assets',
       );
 
       return true;
-    } catch (e) {
-      debugPrint('❌ [FirebaseScreenerRepository] deleteScreener($id) failed: $e');
+    } catch (e, st) {
+      AppLoggerHelper.failure('FirebaseScreenerRepository', 'deleteScreener($id) failed: $e', error: e, stackTrace: st);
       return false;
     }
   }

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:get/get.dart';
 import 'package:joba_admin/core/utils/app_toast.dart';
+import 'package:joba_admin/core/utils/logging/logger.dart';
 import 'package:joba_admin/features/disease_checkup/models/screener_admin_model.dart';
 import 'package:joba_admin/core/repositories/screener_repository.dart';
 
@@ -25,6 +26,7 @@ class AdminScreenerController extends GetxController {
 
   Future<void> loadScreeners() async {
     loading.value = true;
+    AppLoggerHelper.info('[AdminScreenerController] 🩺 Fetching disease checkup screeners...');
     try {
       final list = await _repository.getScreeners();
       screeners.assignAll(list);
@@ -36,7 +38,9 @@ class AdminScreenerController extends GetxController {
       } else {
         selectedScreenerId.value = '';
       }
-    } catch (e) {
+      AppLoggerHelper.success('AdminScreenerController', 'Loaded ${screeners.length} screeners');
+    } catch (e, st) {
+      AppLoggerHelper.failure('AdminScreenerController', 'Failed to load screeners: $e', error: e, stackTrace: st);
       AppToast.error('Error', 'Failed to load screeners: $e');
     } finally {
       loading.value = false;
@@ -96,6 +100,7 @@ class AdminScreenerController extends GetxController {
     Uint8List? imageBytes,
     String? imageName,
   }) async {
+    AppLoggerHelper.info('[AdminScreenerController] 💾 Saving screener "${screener.nameEn}" (isNew: $isNew)...');
     try {
       if (isNew) {
         final created = await _repository.createScreener(
@@ -105,6 +110,7 @@ class AdminScreenerController extends GetxController {
         );
         screeners.add(created);
         selectedScreenerId.value = created.id;
+        AppLoggerHelper.success('AdminScreenerController', 'Created screener "${screener.nameEn}" (${created.id})');
         AppToast.success('Success', 'Created screener "${screener.nameEn}"');
       } else {
         final updated = await _repository.updateScreener(
@@ -117,14 +123,17 @@ class AdminScreenerController extends GetxController {
           screeners[idx] = updated;
         }
         selectedScreenerId.value = updated.id;
+        AppLoggerHelper.success('AdminScreenerController', 'Updated screener "${screener.nameEn}" (${updated.id})');
         AppToast.success('Success', 'Updated screener "${screener.nameEn}"');
       }
-    } catch (e) {
+    } catch (e, st) {
+      AppLoggerHelper.failure('AdminScreenerController', 'Failed to save screener: $e', error: e, stackTrace: st);
       AppToast.error('Error', 'Failed to save screener: $e');
     }
   }
 
   Future<void> deleteScreener(String id) async {
+    AppLoggerHelper.info('[AdminScreenerController] 🗑️ Deleting screener: $id');
     try {
       final success = await _repository.deleteScreener(id);
       if (success) {
@@ -133,14 +142,17 @@ class AdminScreenerController extends GetxController {
           selectedScreenerId.value =
               screeners.isNotEmpty ? screeners.first.id : '';
         }
+        AppLoggerHelper.success('AdminScreenerController', 'Deleted screener $id');
         AppToast.success('Success', 'Screener deleted successfully.');
       }
-    } catch (e) {
+    } catch (e, st) {
+      AppLoggerHelper.failure('AdminScreenerController', 'Failed to delete screener: $e', error: e, stackTrace: st);
       AppToast.error('Error', 'Failed to delete screener: $e');
     }
   }
 
   Future<void> toggleScreenerActive(String id, bool enabled) async {
+    AppLoggerHelper.info('[AdminScreenerController] 🔄 Toggling screener $id active state: $enabled');
     try {
       final success = await _repository.toggleScreenerActive(id, enabled);
       if (success) {
@@ -148,13 +160,15 @@ class AdminScreenerController extends GetxController {
         if (idx != -1) {
           screeners[idx] = screeners[idx].copyWith(enabled: enabled);
           screeners.refresh();
+          AppLoggerHelper.success('AdminScreenerController', 'Screener "${screeners[idx].nameEn}" active: $enabled');
           AppToast.success(
             'Success',
             'Screener "${screeners[idx].nameEn}" ${enabled ? "activated" : "deactivated"}.',
           );
         }
       }
-    } catch (e) {
+    } catch (e, st) {
+      AppLoggerHelper.failure('AdminScreenerController', 'Failed to update active status: $e', error: e, stackTrace: st);
       AppToast.error('Error', 'Failed to update active status: $e');
     }
   }
